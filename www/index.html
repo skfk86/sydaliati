@@ -187,6 +187,7 @@ select.input{appearance:none}
    ========================================================= */
 const SUPABASE_URL = 'https://gsplawplbiruyjkndblg.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_kZMvSQWDZi3j3GqoL0GIGA_yBnyYPkX';
+const APP_BUILD = '__BUILD__';
 const DEFAULT_COORDS = { lat: 19.6158, lng: 37.2164 }; // بورتسودان
 const CITIES = [
   ['portsudan','بورتسودان'],['khartoum','الخرطوم'],['omdurman','أم درمان'],['bahri','بحري'],
@@ -328,7 +329,13 @@ async function locateBest(maxWait = 12000) {
     const finish = () => {
       if (done) return; done = true; clearTimeout(timer);
       if (watchId != null) { if (G) G.clearWatch({ id: watchId }); else navigator.geolocation.clearWatch(watchId); }
-      best ? resolve(best) : reject(new Error('no fix'));
+      if (best) return resolve(best);
+      // فشل GPS (داخل مبنى مثلاً): نجرّب موقع الشبكة الأقل دقة
+      const lowOpts = { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 };
+      const p = G ? G.getCurrentPosition(lowOpts)
+        : new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, lowOpts));
+      p.then(pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Math.round(pos.coords.accuracy || 9999), t: Date.now() }))
+       .catch(reject);
     };
     const onPos = (pos) => {
       if (!pos || !pos.coords) return;
@@ -577,8 +584,14 @@ Screens.login = async ({ query }) => {
 Screens.home = async () => {
   const c = await getCoords();
   let list = [];
-  try { list = await q(sb.rpc('nearby_pharmacies_v2', { lat: c.lat, lng: c.lng, radius_m: 15000, only_open: false })); }
-  catch (e) { console.warn(e); }
+  let far = false;
+  try {
+    list = await q(sb.rpc('nearby_pharmacies_v2', { lat: c.lat, lng: c.lng, radius_m: 15000, only_open: false }));
+    if (!list.length) { // لا شيء قريب: نعرض أقرب الصيدليات المسجلة أينما كانت
+      list = await q(sb.rpc('nearby_pharmacies_v2', { lat: c.lat, lng: c.lng, radius_m: 3000000, only_open: false }));
+      far = list.length > 0;
+    }
+  } catch (e) { console.warn(e); }
   list.sort((a, b) => (b.is_open - a.is_open) || (b.is_premium - a.is_premium) || (a.distance_m - b.distance_m));
   const openCount = list.filter(p => p.is_open).length;
   const hello = S.profile && S.profile.name ? `أهلاً ${esc(S.profile.name.split(' ')[0])}،` : 'ابحث عن دوائك';
@@ -588,7 +601,7 @@ Screens.home = async () => {
         <div class="row" style="justify-content:space-between">
           <button class="col" id="loc" style="gap:2px;text-align:right;color:#fff">
             <span style="font-size:13px;color:#CDE9E0">موقعك الحالي</span>
-            <span class="row" style="gap:6px;font-size:15.5px;font-weight:600">${icon('pin', 18, 2)}<span id="locName" class="ellipsis" style="max-width:230px">${S.coordsReal ? esc(S.coords.place || 'موقعك الحالي') : 'بورتسودان (افتراضي)'}</span>${icon('locate', 15, 2)}</span>
+            <span class="row" style="gap:6px;font-size:15.5px;font-weight:600">${icon('pin', 18, 2)}<span id="locName" class="ellipsis" style="max-width:230px">${S.coordsReal ? esc(S.coords.place || 'موقعك الحالي') : 'الموقع غير محدد'}</span>${icon('locate', 15, 2)}</span>
             ${S.coordsReal && S.coords.acc ? `<span style="font-size:11.5px;color:#CDE9E0">الدقة ±${S.coords.acc} م · اضغط للتحديث</span>` : `<span style="font-size:11.5px;color:#CDE9E0">اضغط لتحديد موقعك</span>`}
           </button>
           <a class="icon-btn glass" href="#/chats" aria-label="المحادثات">${icon('chat', 22, 1.8)}</a>
@@ -605,13 +618,17 @@ Screens.home = async () => {
         <a class="cat" href="#/search?cat=supplies"><span style="color:#C2410C">${icon('kit', 26, 1.8)}</span>مستلزمات</a>
         <a class="cat" href="#/map?night=1"><span style="color:#7C3AED">${icon('moon', 26, 1.8)}</span>مناوبة ليلية</a>
       </div>
-      <div class="section-head"><h2>${openCount ? `${openCount} مفتوحة بالقرب منك` : 'الصيدليات القريبة'}</h2><a href="#/map" class="small bold">عرض الخريطة</a></div>
+      ${!S.coordsReal ? `<div class="notice warn" style="margin:18px 20px 0">${icon('pin', 18, 2)}<span>لم نتمكن من تحديد موقعك، لذلك المسافات تقريبية. فعّل الموقع (GPS) ثم <button id="loc2" style="color:inherit;font-weight:700;text-decoration:underline">اضغط هنا</button>.</span></div>` : ''}
+      <div class="section-head"><h2>${far ? 'أقرب الصيدليات المسجلة' : openCount ? `${openCount} مفتوحة بالقرب منك` : 'الصيدليات القريبة'}</h2><a href="#/map" class="small bold">عرض الخريطة</a></div>
+      ${far && S.coordsReal ? `<p class="small muted" style="padding:0 20px 10px;margin-top:-4px">لا توجد صيدليات مسجلة ضمن 15 كم منك حتى الآن.</p>` : ''}
       <div class="pad stack">${list.length ? list.slice(0, 20).map(pharmacyCard).join('') :
         emptyState('store', 'لا توجد صيدليات قريبة بعد', 'نضيف الصيدليات تباعاً. إن كنت تملك صيدلية، سجّلها مجاناً.', `<a class="btn btn-primary" href="#/register" style="max-width:240px">تسجيل صيدلية</a>`)}</div>
       ${nav('/home')}</div>`,
     mount() {
       $('#hs').addEventListener('submit', e => { e.preventDefault(); const v = $('#hq').value.trim(); go('/search', v ? { q: v } : null); });
-      $('#loc').addEventListener('click', async () => { toast('جارٍ تحديد موقعك…'); await getCoords(true); render(); });
+      const relocate = async () => { toast('جارٍ تحديد موقعك…'); await getCoords(true); render(); };
+      $('#loc').addEventListener('click', relocate);
+      const l2 = $('#loc2'); if (l2) l2.addEventListener('click', relocate);
     }
   };
 };
@@ -872,7 +889,8 @@ function pinIcon(open, big = false) {
 }
 Screens.map = async ({ query }) => {
   const c = await getCoords();
-  const all = await q(sb.rpc('nearby_pharmacies_v2', { lat: c.lat, lng: c.lng, radius_m: 40000, only_open: false }));
+  let all = await q(sb.rpc('nearby_pharmacies_v2', { lat: c.lat, lng: c.lng, radius_m: 40000, only_open: false }));
+  if (!all.length) all = await q(sb.rpc('nearby_pharmacies_v2', { lat: c.lat, lng: c.lng, radius_m: 3000000, only_open: false }));
   let filter = query.night ? 'night' : (query.open ? 'open' : 'all');
   return {
     html: `<div>
@@ -917,7 +935,13 @@ Screens.map = async ({ query }) => {
         document.querySelectorAll('[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === filter));
         const list = all.filter(p => filter === 'open' ? p.is_open : filter === 'night' ? p.night_shift : true);
         list.forEach(p => L.marker([p.lat, p.lng], { icon: pinIcon(p.is_open), title: p.name }).on('click', () => showCard(p)).addTo(layer));
-        if (!list.length) toast(filter === 'all' ? 'لا توجد صيدليات مسجلة قريبة بعد' : 'لا توجد نتائج لهذا الفلتر');
+        if (!list.length) toast(filter === 'all' ? 'لا توجد صيدليات مسجلة بعد' : 'لا توجد نتائج لهذا الفلتر');
+        else if (!list.some(p => map.getBounds().contains([p.lat, p.lng]))) {
+          // الصيدليات خارج الشاشة: نقرّب الخريطة لتشملها
+          const pts = list.slice(0, 10).map(p => [p.lat, p.lng]);
+          if (S.coordsReal) pts.push([c.lat, c.lng]);
+          map.fitBounds(pts, { padding: [60, 60], maxZoom: 15 });
+        }
       };
       document.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { filter = b.dataset.f; draw(); }));
       $('#me').addEventListener('click', async () => {
@@ -1077,6 +1101,7 @@ Screens.account = async () => {
         <div class="card" style="padding:0 16px">
           ${row('pin', 'الموقع', S.coordsReal ? 'تلقائي' : 'افتراضي', '#/home', ['#E3F2EC', '#0B6E5B'])}
         </div>
+        <p class="small muted" style="text-align:center">الإصدار ${APP_BUILD}</p>
         <button class="btn btn-danger" id="out">${icon('logout', 18, 2)}تسجيل الخروج</button>
       </div>${nav('/account')}</div>`,
     mount() {

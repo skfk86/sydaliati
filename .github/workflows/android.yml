@@ -32,6 +32,9 @@ jobs:
           node scripts/copy-vendor.js
           ls -la www/vendor
 
+      - name: Stamp build version
+        run: sed -i "s/__BUILD__/${{ github.run_number }} · $(date -u +%Y-%m-%d)/" www/index.html
+
       - name: Add Android platform (first time)
         run: |
           if [ ! -d android ]; then npx cap add android; fi
