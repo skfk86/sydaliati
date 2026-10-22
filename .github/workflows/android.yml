@@ -1,0 +1,49 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # كل المكتبات تُحمَّل هنا فقط (Capacitor + Supabase + Leaflet)
+      - name: Download libraries
+        run: npm install --no-audit --no-fund
+
+      - name: Copy web libraries to www/vendor
+        run: |
+          node scripts/copy-vendor.js
+          ls -la www/vendor
+
+      - name: Add Android platform (first time)
+        run: |
+          if [ ! -d android ]; then npx cap add android; fi
+          bash scripts/android-permissions.sh
+
+      - name: Sync web code
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sydaliati-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk

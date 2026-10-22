@@ -1,0 +1,1329 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0B6E5B">
+<title>صيدليتي السودان</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="vendor/leaflet.css">
+<style>
+:root{
+  --brand:#0B6E5B; --brand-dark:#08513F; --brand-soft:#E3F2EC; --brand-mint:#7FD4BA;
+  --ink:#10201C; --ink-2:#3B4A46; --muted:#5B6B67; --faint:#8A9894;
+  --line:#E3E9E7; --line-2:#EEF2F1; --field:#F0F4F3; --bg:#F5F7F6; --card:#FFFFFF;
+  --blue:#1D4ED8; --blue-soft:#E6EEFD; --amber:#B54708; --amber-soft:#FEF0E1;
+  --red:#B42318; --red-soft:#FDE8E8; --gold:#F59E0B;
+  --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg)}
+body{font-family:'IBM Plex Sans Arabic',system-ui,-apple-system,'Segoe UI',Tahoma,sans-serif;color:var(--ink);font-size:15px;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+a{color:var(--brand);text-decoration:none}
+svg{flex-shrink:0}
+h1,h2,h3,p{margin:0}
+#app{max-width:520px;margin:0 auto;min-height:100%;position:relative;background:var(--bg)}
+.screen{min-height:100vh;padding-bottom:calc(88px + var(--safe-bottom))}
+.screen.no-nav{padding-bottom:calc(24px + var(--safe-bottom))}
+.pad{padding:0 20px}
+.row{display:flex;align-items:center;gap:10px}
+.col{display:flex;flex-direction:column;gap:6px}
+.grow{flex:1;min-width:0}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+.bold{font-weight:700}
+.ellipsis{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* top bars */
+.hero{background:var(--brand);color:#fff;padding:calc(20px + var(--safe-top)) 20px 64px;border-radius:0 0 28px 28px;display:flex;flex-direction:column;gap:18px}
+.hero h1{font-size:23px;line-height:1.4;font-weight:700}
+.topbar{background:var(--card);padding:calc(14px + var(--safe-top)) 16px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20}
+.topbar h1{font-size:17px;font-weight:700}
+.page-title{padding:calc(22px + var(--safe-top)) 20px 14px}
+.page-title h1{font-size:24px;font-weight:700}
+
+/* buttons */
+.icon-btn{width:44px;height:44px;border-radius:13px;background:var(--field);display:inline-flex;align-items:center;justify-content:center;color:var(--ink)}
+.icon-btn.glass{background:rgba(255,255,255,.14);color:#fff}
+.icon-btn.white{background:#fff;box-shadow:0 2px 8px rgba(16,32,28,.10)}
+.icon-btn.soft{background:var(--brand-soft);color:var(--brand)}
+.btn{height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15.5px;font-weight:600;width:100%}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-primary:active{background:var(--brand-dark)}
+.btn-soft{background:var(--brand-soft);color:var(--brand)}
+.btn-dark{background:var(--ink);color:#fff}
+.btn-ghost{background:transparent;color:var(--muted);height:44px}
+.btn-danger{background:transparent;color:var(--red);height:44px}
+.btn[disabled]{opacity:.55;pointer-events:none}
+.chip{height:36px;padding:0 14px;border-radius:999px;background:#fff;border:1px solid #D5DEDB;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.chip.on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+
+/* fields */
+.field{display:flex;flex-direction:column;gap:7px}
+.field label{font-size:13px;font-weight:600;color:var(--ink-2)}
+.input{height:52px;border:1.5px solid #D5DEDB;border-radius:14px;padding:0 14px;background:#fff;outline:none;width:100%}
+.input:focus{border-color:var(--brand)}
+textarea.input{height:auto;min-height:90px;padding:12px 14px;resize:vertical}
+select.input{appearance:none}
+.searchbox{display:flex;align-items:center;gap:8px;height:46px;border-radius:14px;background:var(--field);padding:0 12px;color:var(--muted)}
+.searchbox input{all:unset;flex:1;color:var(--ink);font-size:15px}
+.search-float{margin:-36px 20px 0;background:#fff;border-radius:18px;box-shadow:0 8px 24px rgba(16,32,28,.10);padding:6px 6px 6px 8px;display:flex;align-items:center;gap:8px;position:relative;z-index:2}
+.search-float form{display:flex;align-items:center;gap:10px;flex:1;padding-right:12px;color:var(--muted)}
+.search-float input{all:unset;flex:1;height:44px;color:var(--ink);font-size:15px}
+
+/* cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px}
+.list-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;gap:12px;align-items:center;color:var(--ink);width:100%;text-align:right}
+.avatar{width:52px;height:52px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700}
+.badge{font-size:12px;font-weight:600;padding:5px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.b-open{color:var(--brand);background:var(--brand-soft)}
+.b-closed{color:var(--muted);background:var(--field)}
+.b-low{color:var(--amber);background:var(--amber-soft)}
+.b-out{color:var(--red);background:var(--red-soft)}
+.b-rx{color:var(--blue);background:var(--blue-soft)}
+.dot{width:7px;height:7px;border-radius:50%;background:#12A27E;display:inline-block}
+.b-closed .dot{background:var(--faint)}
+.section-head{display:flex;align-items:center;justify-content:space-between;padding:24px 20px 12px}
+.section-head h2{font-size:17px;font-weight:700}
+.stack{display:flex;flex-direction:column;gap:12px}
+.cats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:22px 20px 0}
+.cat{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12.5px;font-weight:500;color:var(--ink)}
+.cat span{width:60px;height:60px;border-radius:18px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.empty{padding:36px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--muted)}
+.empty .ic{width:64px;height:64px;border-radius:20px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center}
+.empty h3{color:var(--ink);font-size:16px}
+.divider-list > *{border-bottom:1px solid var(--line-2)}
+.divider-list > *:last-child{border-bottom:0}
+
+/* nav */
+.nav{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;background:#fff;border-top:1px solid var(--line);padding:8px 8px calc(10px + var(--safe-bottom));display:grid;z-index:30}
+.nav a{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11.5px;font-weight:500;color:var(--muted);padding:6px 0;position:relative}
+.nav a.on{color:var(--brand);font-weight:600}
+.nav .pill{position:absolute;top:2px;left:calc(50% - 22px);min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+
+/* skeleton */
+.sk{background:linear-gradient(90deg,#E9EEEC 25%,#F3F6F5 50%,#E9EEEC 75%);background-size:200% 100%;animation:sk 1.2s infinite;border-radius:14px}
+@keyframes sk{to{background-position:-200% 0}}
+
+/* toast & sheet */
+#toast{position:fixed;left:50%;bottom:calc(96px + var(--safe-bottom));transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 18px;border-radius:14px;font-size:14px;opacity:0;transition:.25s;z-index:100;pointer-events:none;max-width:88vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.error{background:var(--red)}
+#toast.success{background:var(--brand)}
+.overlay{position:fixed;inset:0;background:rgba(16,32,28,.45);z-index:60;display:flex;align-items:flex-end;justify-content:center;animation:fade .2s}
+.sheet{background:#fff;width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:10px 20px calc(22px + var(--safe-bottom));max-height:88vh;overflow:auto;animation:up .25s}
+.sheet .grab{width:40px;height:5px;border-radius:999px;background:#D5DEDB;margin:0 auto 14px}
+.sheet h3{font-size:18px;font-weight:700;margin-bottom:14px}
+@keyframes up{from{transform:translateY(40px);opacity:.4}}
+@keyframes fade{from{opacity:0}}
+
+/* map */
+.map-full{position:fixed;inset:0;max-width:520px;margin:0 auto;z-index:1}
+.map-top{position:fixed;top:calc(16px + var(--safe-top));left:0;right:0;max-width:520px;margin:0 auto;padding:0 16px;display:flex;flex-direction:column;gap:10px;z-index:10}
+.map-card{position:fixed;left:0;right:0;bottom:calc(76px + var(--safe-bottom));max-width:520px;margin:0 auto;padding:0 12px;z-index:10}
+.pin{width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center}
+.pin svg{transform:rotate(45deg)}
+.me-dot{width:20px;height:20px;border-radius:50%;background:#2563EB;border:4px solid #fff;box-shadow:0 0 0 9px rgba(37,99,235,.18)}
+.leaflet-container{font-family:inherit;background:#E4EEEA}
+
+/* chat */
+.msgs{display:flex;flex-direction:column;gap:6px;padding:16px}
+.bubble{max-width:78%;padding:10px 14px;font-size:14.5px;line-height:1.6;white-space:pre-wrap;word-wrap:break-word}
+.bubble.me{align-self:flex-start;background:var(--brand);color:#fff;border-radius:18px 18px 4px 18px}
+.bubble.them{align-self:flex-end;background:#fff;border:1px solid var(--line);border-radius:18px 18px 18px 4px}
+.bubble img{display:block;max-width:220px;max-height:260px;border-radius:12px;margin:-4px -8px}
+.stamp{font-size:11px;color:var(--muted);margin-bottom:6px}
+.stamp.me{align-self:flex-start}.stamp.them{align-self:flex-end}
+.composer{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;background:#fff;border-top:1px solid var(--line);padding:10px 12px calc(12px + var(--safe-bottom));display:flex;align-items:center;gap:8px;z-index:30}
+.composer input[type=text]{flex:1;height:44px;border-radius:13px;background:var(--field);border:0;padding:0 14px;outline:none}
+
+/* segmented */
+.seg{display:flex;background:var(--field);border-radius:10px;padding:3px;gap:2px}
+.seg button{height:32px;padding:0 10px;border-radius:8px;font-size:12px;font-weight:600;color:var(--muted)}
+.seg button.on-ok{background:#fff;color:var(--brand)}
+.seg button.on-low{background:#fff;color:var(--amber)}
+.seg button.on-out{background:#fff;color:var(--red)}
+
+.toggle-card{border-radius:22px;padding:18px;display:flex;align-items:center;gap:14px;color:#fff;width:100%;text-align:right}
+.switch{width:64px;height:36px;border-radius:999px;background:rgba(255,255,255,.25);position:relative}
+.switch i{position:absolute;top:4px;width:28px;height:28px;border-radius:50%;background:#fff;transition:.2s}
+
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.steps span{height:5px;border-radius:999px;background:var(--line)}
+.steps span.on{background:var(--brand)}
+.drop{border:2px dashed #9FC9BB;border-radius:18px;background:#F3FAF7;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--brand);text-align:center;padding:16px;position:relative}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.tabs{display:flex;gap:22px;border-bottom:1px solid var(--line)}
+.tabs button{padding:10px 0;font-size:14px;font-weight:500;color:var(--muted);border-bottom:2.5px solid transparent}
+.tabs button.on{color:var(--brand);font-weight:700;border-color:var(--brand)}
+.stars{display:inline-flex;gap:2px;direction:ltr}
+.star-pick{display:flex;gap:6px;justify-content:center;direction:ltr}
+.star-pick button{width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+.notice{border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.7;display:flex;gap:10px;align-items:flex-start}
+.notice.warn{background:var(--amber-soft);color:#7A3A06}
+.notice.info{background:var(--blue-soft);color:#1E3A8A}
+.notice.ok{background:var(--brand-soft);color:var(--brand-dark)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="vendor/supabase.js"></script>
+<script src="vendor/leaflet.js"></script>
+<script>
+'use strict';
+/* =========================================================
+   صيدليتي السودان — تطبيق Capacitor بملف واحد + Supabase
+   ========================================================= */
+const SUPABASE_URL = 'https://gsplawplbiruyjkndblg.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_kZMvSQWDZi3j3GqoL0GIGA_yBnyYPkX';
+const DEFAULT_COORDS = { lat: 19.6158, lng: 37.2164 }; // بورتسودان
+const CITIES = [
+  ['portsudan','بورتسودان'],['khartoum','الخرطوم'],['omdurman','أم درمان'],['bahri','بحري'],
+  ['madani','ود مدني'],['kassala','كسلا'],['gedaref','القضارف'],['atbara','عطبرة'],
+  ['shendi','شندي'],['damer','الدامر'],['dongola','دنقلا'],['obeid','الأبيض'],['kosti','كوستي'],
+  ['sennar','سنار'],['damazin','الدمازين'],['nyala','نيالا'],['fasher','الفاشر'],['other','مدينة أخرى']
+];
+const cityName = (slug) => (CITIES.find(c => c[0] === slug) || [, slug || ''])[1];
+
+/* ---------- Capacitor helpers (تعمل أيضاً في المتصفح) ---------- */
+const Cap = window.Capacitor;
+const isNative = !!(Cap && Cap.isNativePlatform && Cap.isNativePlatform());
+const Plug = (name) => (Cap && Cap.Plugins && Cap.Plugins[name]) || null;
+
+const kv = {
+  async get(k) {
+    const P = isNative && Plug('Preferences');
+    if (P) return (await P.get({ key: k })).value;
+    try { return localStorage.getItem(k); } catch { return null; }
+  },
+  async set(k, v) {
+    const P = isNative && Plug('Preferences');
+    if (P) return P.set({ key: k, value: v });
+    try { localStorage.setItem(k, v); } catch {}
+  },
+  async remove(k) {
+    const P = isNative && Plug('Preferences');
+    if (P) return P.remove({ key: k });
+    try { localStorage.removeItem(k); } catch {}
+  }
+};
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false,
+          storage: { getItem: kv.get, setItem: kv.set, removeItem: kv.remove } }
+});
+
+/* ---------- الحالة العامة ---------- */
+const S = { user: null, profile: null, myPharmacy: null, coords: null, coordsReal: false, unread: 0 };
+
+/* ---------- أيقونات (خطية بنمط Lucide) ---------- */
+const P = {
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  pin:'<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  back:'<path d="m9 18 6-6-6-6"/>', fwd:'<path d="m15 18-6-6 6-6"/>', down:'<path d="m6 9 6 6 6-6"/>',
+  pill:'<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7z"/><path d="m8.5 8.5 7 7"/>',
+  glove:'<path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.3l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>',
+  kit:'<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M12 11v6M9 14h6"/>',
+  moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/>',
+  home:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  map:'<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+  chat:'<path d="M21 12a8 8 0 0 1-11.8 7L4 20l1.1-4.6A8 8 0 1 1 21 12z"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  store:'<path d="M3 21h18M5 21V8l7-5 7 5v13"/><path d="M12 10v6M9 13h6"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  nav:'<path d="m3 11 19-9-9 19-2-8z"/>',
+  phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
+  heart:'<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z"/>',
+  send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
+  camera:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3.5"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>', check:'<path d="M20 6 9 17l-5-5"/>', x:'<path d="M18 6 6 18M6 6l12 12"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/>',
+  shield:'<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  shieldAlert:'<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="M12 8v4M12 16h.01"/>',
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5M12 3v12"/>',
+  locate:'<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/>',
+  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  flag:'<path d="M4 22V4a1 1 0 0 1 1-1h12l-2 4 2 4H5"/>',
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  file:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
+  image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>',
+  mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+  lock:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  crown:'<path d="m2 7 5 4 5-7 5 7 5-4-2 12H4z"/>',
+  wifiOff:'<path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M2 8.8a15 15 0 0 1 4.2-2.6M10.7 5.1A15 15 0 0 1 22 8.8M5 12.9a10 10 0 0 1 5.2-2.7M16.8 13.2a10 10 0 0 0-1.8-1.6M12 20h.01"/>'
+};
+function icon(name, size = 22, sw = 1.9, extra = '') {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${P[name] || ''}</svg>`;
+}
+const VERIFIED = `<svg width="17" height="17" viewBox="0 0 24 24" fill="#0B6E5B" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="صيدلية موثقة"><path d="M12 2.5 14.6 4.4 17.8 4.3 18.8 7.4 21.4 9.3 20.4 12.4 21.4 15.5 18.8 17.4 17.8 20.5 14.6 20.4 12 22.3 9.4 20.4 6.2 20.5 5.2 17.4 2.6 15.5 3.6 12.4 2.6 9.3 5.2 7.4 6.2 4.3 9.4 4.4z"/><path d="m8.5 12.5 2.3 2.3 4.7-4.8"/></svg>`;
+const STAR = (on = true, s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="${on ? '#F59E0B' : 'none'}" stroke="${on ? '#F59E0B' : '#C7D0CD'}" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>`;
+
+/* ---------- أدوات ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const fmtPrice = (n) => n == null ? '—' : Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
+const fmtDist = (m) => m == null ? '' : (m < 1000 ? `${Math.round(m / 10) * 10} م` : `${(m / 1000).toFixed(1)} كم`);
+function ago(ts) {
+  if (!ts) return '';
+  const s = Math.max(0, (Date.now() - new Date(ts).getTime()) / 1000);
+  if (s < 60) return 'الآن';
+  const m = Math.floor(s / 60); if (m < 60) return m === 1 ? 'قبل دقيقة' : m === 2 ? 'قبل دقيقتين' : `قبل ${m} دقيقة`;
+  const h = Math.floor(m / 60); if (h < 24) return h === 1 ? 'قبل ساعة' : h === 2 ? 'قبل ساعتين' : `قبل ${h} ساعات`;
+  const d = Math.floor(h / 24); return d === 1 ? 'أمس' : d === 2 ? 'قبل يومين' : `قبل ${d} أيام`;
+}
+const clock = (ts) => new Date(ts).toLocaleTimeString('ar', { hour: 'numeric', minute: '2-digit' });
+const initial = (name) => esc((name || '؟').replace(/^صيدلية\s+(ال)?/, '').trim().charAt(0) || '؟');
+const TINTS = [['#E3F2EC','#0B6E5B'],['#E6EEFD','#1D4ED8'],['#FEF0E1','#B54708'],['#F1E8FD','#6D28D9'],['#FDE8E8','#B42318']];
+const tint = (id) => { let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return TINTS[h % TINTS.length]; };
+const STATUS = { ok: ['متوفر','b-open'], low: ['كمية محدودة','b-low'], out: ['نفد','b-out'] };
+
+function toast(msg, type = '') {
+  const t = $('#toast'); t.textContent = msg; t.className = 'show ' + type;
+  clearTimeout(toast._t); toast._t = setTimeout(() => (t.className = ''), 3200);
+}
+function errMsg(e) {
+  const m = (e && (e.message || e.error_description)) || '';
+  const map = {
+    'Invalid login credentials': 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
+    'Email not confirmed': 'أكّد بريدك أولاً من الرابط الذي أرسلناه لك',
+    'User already registered': 'هذا البريد مسجّل مسبقاً، سجّل الدخول',
+    'Password should be at least': 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
+    'rate limit': 'محاولات كثيرة، انتظر قليلاً ثم حاول مجدداً',
+    'Failed to fetch': 'تعذّر الاتصال، تحقق من الإنترنت',
+    'Unable to validate email': 'صيغة البريد الإلكتروني غير صحيحة',
+    'duplicate key': 'هذا العنصر موجود مسبقاً',
+    'row-level security': 'ليست لديك صلاحية لهذا الإجراء'
+  };
+  for (const k in map) if (m.includes(k)) return map[k];
+  return 'حدث خطأ، حاول مرة أخرى';
+}
+async function q(promise) { const { data, error } = await promise; if (error) throw error; return data; }
+
+/* ---------- الموقع ---------- */
+async function getCoords(force = false) {
+  if (S.coords && !force) return S.coords;
+  if (!force) {
+    const saved = await kv.get('coords');
+    if (saved) { try { S.coords = JSON.parse(saved); S.coordsReal = true; return S.coords; } catch {} }
+  }
+  try {
+    let pos;
+    const G = isNative && Plug('Geolocation');
+    if (G) {
+      try { await G.requestPermissions(); } catch {}
+      pos = await G.getCurrentPosition({ enableHighAccuracy: false, timeout: 12000 });
+    } else {
+      pos = await new Promise((res, rej) => navigator.geolocation
+        ? navigator.geolocation.getCurrentPosition(res, rej, { timeout: 12000, maximumAge: 300000 })
+        : rej(new Error('no geo')));
+    }
+    S.coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }; S.coordsReal = true;
+    await kv.set('coords', JSON.stringify(S.coords));
+  } catch {
+    if (force) toast('تعذّر تحديد موقعك، فعّل خدمة الموقع', 'error');
+    S.coords = S.coords || DEFAULT_COORDS;
+  }
+  return S.coords;
+}
+
+/* ---------- الجلسة ---------- */
+async function loadSession() {
+  const { data: { session } } = await sb.auth.getSession();
+  S.user = session ? session.user : null;
+  S.profile = null; S.myPharmacy = null;
+  if (!S.user) return;
+  try {
+    S.profile = await q(sb.from('profiles').select('*').eq('id', S.user.id).maybeSingle());
+    const metaName = S.user.user_metadata && S.user.user_metadata.full_name;
+    if (S.profile && !S.profile.name && metaName) {
+      await sb.from('profiles').update({ name: metaName }).eq('id', S.user.id);
+      S.profile.name = metaName;
+    }
+    const ph = await q(sb.from('pharmacies').select('*').eq('owner_id', S.user.id).order('created_at').limit(1));
+    S.myPharmacy = ph[0] || null;
+  } catch (e) { console.warn(e); }
+}
+async function refreshUnread() {
+  if (!S.user) { S.unread = 0; return; }
+  try {
+    const rows = await q(sb.from('chats').select('user_id, unread_user, unread_pharmacy'));
+    S.unread = rows.reduce((n, c) => n + (c.user_id === S.user.id ? c.unread_user : c.unread_pharmacy), 0);
+  } catch { S.unread = 0; }
+  const pill = $('#nav-unread'); if (pill) { pill.textContent = S.unread; pill.style.display = S.unread ? 'flex' : 'none'; }
+}
+function requireLogin(next) {
+  if (S.user) return true;
+  go('/login', { next: next || location.hash.slice(1) });
+  return false;
+}
+
+/* ---------- الموجّه ---------- */
+let cleanups = [], renderSeq = 0;
+function onCleanup(fn) { cleanups.push(fn); }
+function go(path, params) {
+  const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+  location.hash = path + qs;
+}
+function parseHash() {
+  const h = location.hash.slice(1) || '/home';
+  const [path, qs] = h.split('?');
+  const parts = path.split('/').filter(Boolean);
+  return { name: parts[0] || 'home', id: parts[1], query: Object.fromEntries(new URLSearchParams(qs || '')) };
+}
+async function render() {
+  cleanups.forEach(fn => { try { fn(); } catch {} }); cleanups = [];
+  closeSheet();
+  const seq = ++renderSeq;
+  const r = parseHash();
+  const screen = Screens[r.name] || Screens.home;
+  const app = $('#app');
+  app.innerHTML = skeleton();
+  try {
+    const out = await screen(r);
+    if (seq !== renderSeq || !out) return;
+    app.innerHTML = out.html;
+    window.scrollTo(0, 0);
+    if (out.mount) out.mount();
+  } catch (e) {
+    console.error(e);
+    if (seq !== renderSeq) return;
+    app.innerHTML = `<div class="screen no-nav">${topbar('خطأ')}${emptyState('wifiOff', 'تعذّر تحميل الصفحة', errMsg(e), `<button class="btn btn-primary" style="max-width:220px" onclick="render()">إعادة المحاولة</button>`)}</div>`;
+  }
+}
+window.addEventListener('hashchange', render);
+
+/* ---------- مكوّنات ---------- */
+function skeleton() {
+  return `<div class="screen"><div class="sk" style="height:150px;border-radius:0 0 28px 28px"></div>
+    <div class="pad stack" style="margin-top:24px">${'<div class="sk" style="height:84px"></div>'.repeat(4)}</div></div>`;
+}
+function topbar(title, opts = {}) {
+  const back = opts.back === false ? '' :
+    `<button class="icon-btn" aria-label="رجوع" onclick="goBack('${opts.back || '/home'}')">${icon('back')}</button>`;
+  return `<header class="topbar">${back}<div class="grow"><h1 class="ellipsis">${title}</h1>${opts.sub ? `<div class="small muted">${opts.sub}</div>` : ''}</div>${opts.right || ''}</header>`;
+}
+function goBack(fallback) { if (history.length > 1) history.back(); else go(fallback); }
+function emptyState(ic, title, text, action = '') {
+  return `<div class="empty"><div class="ic">${icon(ic, 30, 1.7)}</div><h3>${title}</h3><p class="small" style="line-height:1.7">${text}</p>${action}</div>`;
+}
+function nav(active) {
+  const items = [['home','الرئيسية','/home'],['map','الخريطة','/map'],['chat','المحادثات','/chats'],['user','حسابي','/account']];
+  if (S.myPharmacy) items.splice(3, 0, ['store','صيدليتي','/owner']);
+  return `<nav class="nav" aria-label="التنقل الرئيسي" style="grid-template-columns:repeat(${items.length},minmax(0,1fr))">${items.map(([ic, label, path]) =>
+    `<a href="#${path}" class="${active === path ? 'on' : ''}" ${active === path ? 'aria-current="page"' : ''}>${icon(ic, 24, active === path ? 2.1 : 1.8)}${label}${path === '/chats' ? `<span class="pill" id="nav-unread" style="display:${S.unread ? 'flex' : 'none'}">${S.unread}</span>` : ''}</a>`).join('')}</nav>`;
+}
+function openBadge(p) {
+  return p.is_open ? `<span class="badge b-open"><span class="dot"></span>مفتوحة</span>` : `<span class="badge b-closed"><span class="dot"></span>مغلقة</span>`;
+}
+function pharmacyCard(p) {
+  const [bg, fg] = tint(p.id);
+  return `<a class="list-card" href="#/pharmacy/${p.id}">
+    <span class="avatar" style="background:${bg};color:${fg}">${initial(p.name)}</span>
+    <span class="grow col" style="gap:4px">
+      <span class="row" style="gap:6px;font-size:15px;font-weight:600"><span class="ellipsis">${esc(p.name)}</span>${p.verified ? VERIFIED : ''}</span>
+      <span class="row small muted" style="gap:10px;flex-wrap:wrap">
+        ${p.rating_count ? `<span class="row" style="gap:3px">${STAR()}${p.rating_avg}</span>` : ''}
+        ${p.distance_m != null ? `<span>${fmtDist(p.distance_m)}</span>` : ''}
+        ${p.night_shift ? `<span>24 ساعة</span>` : (p.closes_at ? `<span>حتى ${esc(p.closes_at)}</span>` : '')}
+      </span>
+    </span>${openBadge(p)}</a>`;
+}
+
+/* ---------- ورقة سفلية ---------- */
+function openSheet(html, mount) {
+  closeSheet();
+  const o = document.createElement('div');
+  o.className = 'overlay'; o.id = 'sheet';
+  o.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div>`;
+  o.addEventListener('click', e => { if (e.target === o) closeSheet(); });
+  document.body.appendChild(o);
+  if (mount) mount(o);
+}
+function closeSheet() { const s = $('#sheet'); if (s) s.remove(); }
+
+/* ---------- الشاشات ---------- */
+const Screens = {};
+
+/* ===== تسجيل الدخول ===== */
+Screens.login = async ({ query }) => {
+  const signup = query.mode === 'signup';
+  const next = query.next || '/home';
+  return {
+    html: `<div class="screen no-nav" style="background:#fff">
+      <div style="background:var(--brand);color:#fff;border-radius:0 0 36px 36px;padding:calc(36px + var(--safe-top)) 24px 34px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center">
+        <span style="width:80px;height:80px;border-radius:24px;background:#fff;color:var(--brand);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px rgba(0,0,0,.18)">
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M12 6.5v6M9 9.5h6"/></svg></span>
+        <span style="font-size:24px;font-weight:700">صيدليتي السودان</span>
+        <span style="font-size:14px;color:#CDE9E0">دواؤك أقرب مما تتوقع</span>
+      </div>
+      <form id="auth" class="pad stack" style="padding-top:28px;gap:16px" novalidate>
+        <div class="col" style="gap:4px"><h1 style="font-size:21px">${signup ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}</h1>
+          <p class="small muted">${signup ? 'سجّل لتتواصل مع الصيدليات وتحفظ المفضلة' : 'أهلاً بعودتك'}</p></div>
+        ${signup ? `<div class="field"><label for="f-name">الاسم</label><input class="input" id="f-name" name="name" autocomplete="name" required></div>` : ''}
+        <div class="field"><label for="f-email">البريد الإلكتروني</label><input class="input" id="f-email" name="email" type="email" dir="ltr" autocomplete="email" inputmode="email" required></div>
+        <div class="field"><label for="f-pass">كلمة المرور</label><input class="input" id="f-pass" name="password" type="password" dir="ltr" autocomplete="${signup ? 'new-password' : 'current-password'}" minlength="6" required></div>
+        <button class="btn btn-primary" type="submit">${signup ? 'إنشاء الحساب' : 'دخول'}</button>
+        ${signup ? '' : `<button type="button" class="btn btn-ghost" id="forgot" style="height:36px;font-size:13.5px">نسيت كلمة المرور؟</button>`}
+        <p class="small muted" style="text-align:center">${signup ? 'لديك حساب؟' : 'ليس لديك حساب؟'}
+          <a href="#/login?${new URLSearchParams({ mode: signup ? 'signin' : 'signup', next })}" style="font-weight:700">${signup ? 'سجّل الدخول' : 'أنشئ حساباً'}</a></p>
+        <a href="#/home" class="btn btn-ghost">تصفّح كزائر</a>
+      </form></div>`,
+    mount() {
+      $('#auth').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const f = new FormData(e.target), btn = e.target.querySelector('[type=submit]');
+        const email = String(f.get('email')).trim(), password = String(f.get('password'));
+        if (!email || password.length < 6) return toast('أدخل البريد وكلمة مرور من 6 أحرف على الأقل', 'error');
+        btn.disabled = true;
+        try {
+          if (signup) {
+            const name = String(f.get('name') || '').trim();
+            if (!name) { btn.disabled = false; return toast('أدخل اسمك', 'error'); }
+            const { data, error } = await sb.auth.signUp({ email, password, options: { data: { full_name: name } } });
+            if (error) throw error;
+            if (!data.session) {
+              openSheet(`<div class="empty" style="padding:8px 0 4px"><div class="ic">${icon('mail', 30, 1.7)}</div>
+                <h3>تحقق من بريدك</h3><p class="small" style="line-height:1.8">أرسلنا رابط تأكيد إلى<br><b dir="ltr">${esc(email)}</b><br>اضغط الرابط ثم عد إلى التطبيق وسجّل الدخول.</p>
+                <button class="btn btn-primary" onclick="closeSheet();go('/login',{mode:'signin',next:'${esc(next)}'})">حسناً</button></div>`);
+              btn.disabled = false; return;
+            }
+          } else {
+            const { error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+          }
+          await loadSession(); refreshUnread();
+          toast('مرحباً بك', 'success');
+          location.replace('#' + next);
+        } catch (err) { toast(errMsg(err), 'error'); btn.disabled = false; }
+      });
+      const fg = $('#forgot');
+      if (fg) fg.addEventListener('click', async () => {
+        const email = $('#f-email').value.trim();
+        if (!email) return toast('اكتب بريدك أولاً ثم اضغط "نسيت كلمة المرور"', 'error');
+        try { await q(sb.auth.resetPasswordForEmail(email)); toast('أرسلنا رابط إعادة التعيين إلى بريدك', 'success'); }
+        catch (err) { toast(errMsg(err), 'error'); }
+      });
+    }
+  };
+};
+
+/* ===== الرئيسية ===== */
+Screens.home = async () => {
+  const c = await getCoords();
+  let list = [];
+  try { list = await q(sb.rpc('nearby_pharmacies', { lat: c.lat, lng: c.lng, radius_m: 15000, only_open: false })); }
+  catch (e) { console.warn(e); }
+  list.sort((a, b) => (b.is_open - a.is_open) || (a.distance_m - b.distance_m));
+  const openCount = list.filter(p => p.is_open).length;
+  const hello = S.profile && S.profile.name ? `أهلاً ${esc(S.profile.name.split(' ')[0])}،` : 'ابحث عن دوائك';
+  return {
+    html: `<div class="screen">
+      <div class="hero">
+        <div class="row" style="justify-content:space-between">
+          <button class="col" id="loc" style="gap:2px;text-align:right;color:#fff">
+            <span style="font-size:13px;color:#CDE9E0">موقعك الحالي</span>
+            <span class="row" style="gap:6px;font-size:15.5px;font-weight:600">${icon('pin', 18, 2)}${S.coordsReal ? 'تحديد تلقائي' : 'بورتسودان (افتراضي)'}${icon('locate', 15, 2)}</span>
+          </button>
+          <a class="icon-btn glass" href="#/chats" aria-label="المحادثات">${icon('chat', 22, 1.8)}</a>
+        </div>
+        <h1>${hello}<br>${S.profile && S.profile.name ? 'دواؤك قريب منك' : 'قبل ما تطلع من البيت'}</h1>
+      </div>
+      <div class="search-float">
+        <form id="hs" role="search">${icon('search', 20, 2)}<input id="hq" placeholder="اسم الدواء أو المستلزم" aria-label="ابحث عن دواء" enterkeyhint="search"></form>
+        <a class="icon-btn soft" href="#/search" aria-label="كل الفئات">${icon('grid', 20, 2)}</a>
+      </div>
+      <div class="cats">
+        <a class="cat" href="#/search?cat=medicine"><span style="color:var(--brand)">${icon('pill', 26, 1.8)}</span>أدوية</a>
+        <a class="cat" href="#/search?cat=gloves"><span style="color:#2563EB">${icon('glove', 26, 1.8)}</span>قفازات</a>
+        <a class="cat" href="#/search?cat=supplies"><span style="color:#C2410C">${icon('kit', 26, 1.8)}</span>مستلزمات</a>
+        <a class="cat" href="#/map?night=1"><span style="color:#7C3AED">${icon('moon', 26, 1.8)}</span>مناوبة ليلية</a>
+      </div>
+      <div class="section-head"><h2>${openCount ? `${openCount} مفتوحة بالقرب منك` : 'الصيدليات القريبة'}</h2><a href="#/map" class="small bold">عرض الخريطة</a></div>
+      <div class="pad stack">${list.length ? list.slice(0, 20).map(pharmacyCard).join('') :
+        emptyState('store', 'لا توجد صيدليات قريبة بعد', 'نضيف الصيدليات تباعاً. إن كنت تملك صيدلية، سجّلها مجاناً.', `<a class="btn btn-primary" href="#/register" style="max-width:240px">تسجيل صيدلية</a>`)}</div>
+      ${nav('/home')}</div>`,
+    mount() {
+      $('#hs').addEventListener('submit', e => { e.preventDefault(); const v = $('#hq').value.trim(); go('/search', v ? { q: v } : null); });
+      $('#loc').addEventListener('click', async () => { toast('جارٍ تحديد موقعك…'); await getCoords(true); render(); });
+    }
+  };
+};
+
+/* ===== البحث ===== */
+Screens.search = async ({ query }) => {
+  const cat = query.cat || '';
+  const CAT = { '': 'الكل', medicine: 'أدوية', gloves: 'قفازات', supplies: 'مستلزمات' };
+  return {
+    html: `<div class="screen no-nav">
+      <header class="topbar" style="flex-direction:column;align-items:stretch;gap:12px">
+        <div class="row"><button class="icon-btn" aria-label="رجوع" onclick="goBack('/home')">${icon('back')}</button>
+          <label class="searchbox grow" style="border:1.5px solid var(--brand)">${icon('search', 18, 2)}<input id="sq" value="${esc(query.q || '')}" placeholder="اسم الدواء أو الاسم العلمي" aria-label="بحث" enterkeyhint="search" autocomplete="off"></label></div>
+        <div class="chips">${Object.entries(CAT).map(([k, v]) => `<button class="chip ${cat === k ? 'on' : ''}" data-cat="${k}">${v}</button>`).join('')}</div>
+      </header>
+      <div id="results" class="pad stack" style="padding-top:16px"></div></div>`,
+    mount() {
+      const input = $('#sq'), box = $('#results');
+      let t, seq = 0;
+      const run = async () => {
+        const term = input.value.trim(), my = ++seq;
+        box.innerHTML = '<div class="sk" style="height:70px"></div>'.repeat(3);
+        try {
+          let rows;
+          if (term.length >= 2) rows = await q(sb.rpc('search_products', { q: term }));
+          else {
+            let qq = sb.from('products').select('*').order('name').limit(60);
+            if (cat) qq = qq.eq('category', cat);
+            rows = await q(qq);
+          }
+          if (cat) rows = rows.filter(r => r.category === cat);
+          if (my !== seq) return;
+          box.innerHTML = rows.length ? `<div class="card divider-list" style="padding:0 14px">${rows.map(productRow).join('')}</div>` :
+            emptyState('search', 'لم نجد هذا الصنف', 'جرّب الاسم العلمي أو اسماً آخر، أو اسأل الصيدلية مباشرة عبر الدردشة.');
+        } catch (e) { if (my === seq) box.innerHTML = emptyState('wifiOff', 'تعذّر البحث', errMsg(e)); }
+      };
+      input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(run, 300); });
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(t); run(); input.blur(); } });
+      document.querySelectorAll('[data-cat]').forEach(b => b.addEventListener('click', () => {
+        const p = {}; if (input.value.trim()) p.q = input.value.trim(); if (b.dataset.cat) p.cat = b.dataset.cat;
+        location.replace('#/search' + (Object.keys(p).length ? '?' + new URLSearchParams(p) : ''));
+      }));
+      run(); if (!query.q && !cat) input.focus();
+    }
+  };
+};
+function productRow(p) {
+  const ic = p.category === 'gloves' ? 'glove' : p.category === 'supplies' ? 'kit' : 'pill';
+  return `<a href="#/product/${p.id}" class="row" style="padding:12px 0;color:var(--ink)">
+    <span style="width:42px;height:42px;border-radius:12px;background:var(--field);color:var(--brand);display:flex;align-items:center;justify-content:center">${icon(ic, 20, 1.8)}</span>
+    <span class="grow col" style="gap:2px"><span class="bold" style="font-size:14.5px">${esc(p.name)}</span>${p.generic ? `<span class="small muted ellipsis">${esc(p.generic)}</span>` : ''}</span>
+    ${p.rx ? '<span class="badge b-rx">بوصفة</span>' : ''}<span style="color:var(--faint)">${icon('fwd', 18, 2)}</span></a>`;
+}
+
+/* ===== منتج: أين يتوفر ===== */
+Screens.product = async ({ id }) => {
+  const c = await getCoords();
+  const [product, rows] = await Promise.all([
+    q(sb.from('products').select('*').eq('id', id).single()),
+    q(sb.rpc('where_available', { pid: id, lat: c.lat, lng: c.lng, radius_m: 30000 }))
+  ]);
+  const ic = product.category === 'gloves' ? 'glove' : product.category === 'supplies' ? 'kit' : 'pill';
+  return {
+    html: `<div class="screen no-nav">${topbar('أين يتوفر؟', { back: '/search' })}
+      <div class="pad" style="padding-top:16px"><div class="list-card">
+        <span class="avatar" style="background:var(--blue-soft);color:var(--blue)">${icon(ic, 28, 1.8)}</span>
+        <span class="grow col" style="gap:3px"><span style="font-size:16px;font-weight:700">${esc(product.name)}</span>${product.generic ? `<span class="small muted">${esc(product.generic)}</span>` : ''}</span>
+        <span class="badge ${product.rx ? 'b-rx' : 'b-closed'}">${product.rx ? 'يحتاج وصفة' : 'بدون وصفة'}</span></div>
+        ${product.rx ? `<div class="notice info" style="margin-top:12px">${icon('file', 18, 1.9)}<span>هذا الدواء يُصرف بوصفة طبية. أحضر الروشتة معك إلى الصيدلية.</span></div>` : ''}
+      </div>
+      <div class="section-head" style="padding-top:20px"><h2 style="font-size:15px">${rows.length ? `متوفر في ${rows.length} ${rows.length === 1 ? 'صيدلية' : rows.length === 2 ? 'صيدليتين' : rows.length <= 10 ? 'صيدليات' : 'صيدلية'}` : 'غير متوفر حالياً'}</h2>${rows.length ? '<span class="small muted">الأقرب أولاً</span>' : ''}</div>
+      <div class="pad stack">${rows.length ? rows.map(r => {
+        const [label, cls] = STATUS[r.status];
+        return `<a href="#/pharmacy/${r.pharmacy_id}" class="card" style="padding:14px;display:flex;flex-direction:column;gap:10px;color:var(--ink)">
+          <span class="row" style="justify-content:space-between;align-items:flex-start">
+            <span class="col" style="gap:2px"><span class="row" style="gap:6px;font-size:15px;font-weight:600">${esc(r.pharmacy_name)}${r.verified ? VERIFIED : ''}</span>
+              <span class="small muted">${fmtDist(r.distance_m)}${r.address ? ' · ' + esc(r.address) : ''}</span></span>
+            <span class="col" style="gap:0;align-items:flex-start"><span style="font-size:17px;font-weight:700">${fmtPrice(r.price)}</span><span class="small muted">${r.price != null ? 'جنيه سوداني' : 'السعر غير محدد'}</span></span>
+          </span>
+          <span class="row" style="justify-content:space-between;border-top:1px dashed var(--line);padding-top:10px">
+            <span class="row" style="gap:6px"><span class="badge ${cls}">${label}</span>${r.is_open ? '' : '<span class="badge b-closed">مغلقة الآن</span>'}</span>
+            <span class="row small muted" style="gap:4px">${icon('clock', 14, 2)}حُدّث ${ago(r.updated_at)}</span>
+          </span></a>`; }).join('') :
+        emptyState('search', 'لم تُسجّل أي صيدلية قريبة هذا الصنف بعد', 'قد يكون متوفراً لكن لم يُحدَّث المخزون. تواصل مع أقرب صيدلية عبر الدردشة للتأكد.', `<a class="btn btn-soft" href="#/home" style="max-width:240px">الصيدليات القريبة</a>`)}</div></div>`
+  };
+};
+
+/* ===== صفحة الصيدلية ===== */
+Screens.pharmacy = async ({ id, query }) => {
+  const c = await getCoords();
+  const p = await q(sb.from('pharmacies').select('*').eq('id', id).maybeSingle());
+  if (!p) return { html: `<div class="screen no-nav">${topbar('الصيدلية')}${emptyState('store', 'الصيدلية غير متاحة', 'ربما لم تُوثّق بعد أو أُزيلت.')}</div>` };
+  const [inv, reviews, fav] = await Promise.all([
+    q(sb.from('inventory').select('status, price, updated_at, products(id, name, rx, category)').eq('pharmacy_id', id)),
+    q(sb.from('reviews').select('*').eq('pharmacy_id', id).order('created_at', { ascending: false }).limit(30)),
+    S.user ? q(sb.from('favorites').select('pharmacy_id').eq('pharmacy_id', id).eq('user_id', S.user.id)) : Promise.resolve([])
+  ]);
+  const order = { ok: 0, low: 1, out: 2 };
+  inv.sort((a, b) => order[a.status] - order[b.status] || (a.products.name > b.products.name ? 1 : -1));
+  const lastInv = inv.reduce((m, r) => (r.updated_at > m ? r.updated_at : m), '');
+  const loc = parseLoc(p.location);
+  const dist = loc ? haversine(c, loc) : null;
+  const isOwner = S.user && p.owner_id === S.user.id;
+  const myReview = S.user && reviews.find(r => r.user_id === S.user.id);
+  const tab = query.tab === 'reviews' ? 'reviews' : 'stock';
+  const geoHref = loc ? (isNative ? `geo:${loc.lat},${loc.lng}?q=${loc.lat},${loc.lng}(${encodeURIComponent(p.name)})` : `https://www.google.com/maps/dir/?api=1&destination=${loc.lat},${loc.lng}`) : '#';
+  let isFav = fav.length > 0;
+  return {
+    html: `<div class="screen no-nav" style="background:#fff">
+      <div style="height:210px;position:relative">
+        <div id="pmap" style="position:absolute;inset:0"></div>
+        <div style="position:absolute;top:calc(14px + var(--safe-top));left:16px;right:16px;display:flex;justify-content:space-between;z-index:500">
+          <button class="icon-btn white" aria-label="رجوع" onclick="goBack('/home')">${icon('back')}</button>
+          <div class="row" style="gap:8px">
+            <button class="icon-btn white" id="share" aria-label="مشاركة">${icon('upload', 20, 1.8)}</button>
+            <button class="icon-btn white" id="fav" aria-label="المفضلة" style="color:${isFav ? '#B42318' : 'var(--ink)'}">${icon('heart', 20, 1.8, isFav ? 'fill="#B42318"' : '')}</button>
+          </div></div></div>
+      <div style="margin-top:-22px;background:#fff;border-radius:24px 24px 0 0;position:relative;z-index:400;padding:20px 20px 0;display:flex;flex-direction:column;gap:16px">
+        <div class="col" style="gap:6px">
+          <div class="row" style="gap:8px"><h1 style="font-size:22px">${esc(p.name)}</h1>${p.verified ? VERIFIED : ''}</div>
+          <div class="row small muted" style="gap:12px;flex-wrap:wrap">
+            <span class="row bold" style="gap:5px;color:${p.is_open ? 'var(--brand)' : 'var(--muted)'}"><span class="dot" style="background:${p.is_open ? '#12A27E' : 'var(--faint)'}"></span>${p.is_open ? 'مفتوحة الآن' : 'مغلقة الآن'}</span>
+            ${p.rating_count ? `<span class="row" style="gap:3px">${STAR()}${p.rating_avg} (${p.rating_count})</span>` : ''}
+            ${dist != null ? `<span>${fmtDist(dist)}</span>` : ''}
+          </div>
+          <span class="small muted">${icon('clock', 13, 2)} الحالة حُدّثت ${ago(p.open_updated_at)} · ${p.night_shift ? 'مناوبة 24 ساعة' : esc([p.opens_at, p.closes_at].filter(Boolean).join(' – ') || 'المواعيد غير محددة')}</span>
+          ${p.address ? `<span class="small muted">${icon('pin', 13, 2)} ${esc(p.address)}، ${esc(cityName(p.city))}</span>` : ''}
+        </div>
+        ${isOwner ? `<a href="#/owner" class="btn btn-dark">${icon('grid', 20, 2)}لوحة التحكم بصيدليتك</a>` : ''}
+        ${!p.verified ? `<div class="notice warn">${icon('shieldAlert', 18, 1.9)}<span>هذه الصيدلية قيد المراجعة ولا تظهر للعملاء بعد.</span></div>` : ''}
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+          <a href="${geoHref}" target="_blank" rel="noopener" class="btn btn-primary" style="height:64px;flex-direction:column;gap:4px;font-size:12.5px">${icon('nav', 20, 2)}الاتجاهات</a>
+          <button id="chatBtn" class="btn btn-soft" style="height:64px;flex-direction:column;gap:4px;font-size:12.5px" ${isOwner ? 'disabled' : ''}>${icon('chat', 20, 2)}دردشة</button>
+          <a href="tel:${esc(p.phone)}" class="btn btn-soft" style="height:64px;flex-direction:column;gap:4px;font-size:12.5px">${icon('phone', 20, 2)}اتصال</a>
+        </div>
+        ${p.whatsapp ? `<a href="https://wa.me/${esc(p.whatsapp.replace(/\D/g, ''))}" target="_blank" rel="noopener" class="btn" style="height:46px;border:1px solid var(--line);font-size:14px;color:#128C4A">واتساب ${esc(p.whatsapp)}</a>` : ''}
+        <div class="tabs" role="tablist">
+          <button role="tab" class="${tab === 'stock' ? 'on' : ''}" data-tab="stock">الأدوية والأسعار (${inv.length})</button>
+          <button role="tab" class="${tab === 'reviews' ? 'on' : ''}" data-tab="reviews">التقييمات (${reviews.length})</button>
+        </div>
+        ${tab === 'stock' ? (inv.length ? `<div class="divider-list">${inv.map(r => {
+          const [label, cls] = STATUS[r.status];
+          return `<a href="#/product/${r.products.id}" class="row" style="padding:12px 0;color:var(--ink)">
+            <span style="width:42px;height:42px;border-radius:12px;background:var(--field);color:var(--brand);display:flex;align-items:center;justify-content:center">${icon(r.products.category === 'gloves' ? 'glove' : r.products.category === 'supplies' ? 'kit' : 'pill', 20, 1.8)}</span>
+            <span class="grow col" style="gap:3px"><span class="bold" style="font-size:14.5px">${esc(r.products.name)}</span>
+              <span class="row" style="gap:6px"><span class="badge ${cls}" style="padding:3px 8px;font-size:11.5px">${label}</span>${r.products.rx ? '<span class="badge b-rx" style="padding:3px 8px;font-size:11.5px">بوصفة</span>' : ''}</span></span>
+            <span style="font-size:15px;font-weight:700">${fmtPrice(r.price)} <span class="small muted" style="font-weight:500">${r.price != null ? 'ج.س' : ''}</span></span></a>`; }).join('')}</div>
+          <p class="small muted row" style="gap:5px;padding-bottom:4px">${icon('clock', 14, 2)}آخر تحديث للمخزون ${ago(lastInv)} · الأسعار قد تتغير</p>` :
+          emptyState('pill', 'لم تُضف الصيدلية مخزونها بعد', 'اسألها مباشرة عبر الدردشة أو الاتصال.')) :
+        `${!isOwner ? `<button class="btn btn-soft" id="rateBtn">${icon('star', 18, 2)}${myReview ? 'تعديل تقييمك' : 'قيّم هذه الصيدلية'}</button>` : ''}
+          ${reviews.length ? `<div class="divider-list">${reviews.map(r => `<div style="padding:12px 0" class="col"><span class="row" style="justify-content:space-between"><span class="stars">${[1,2,3,4,5].map(i => STAR(i <= r.stars)).join('')}</span><span class="small muted">${ago(r.created_at)}</span></span>${r.body ? `<p style="font-size:14px;line-height:1.7">${esc(r.body)}</p>` : ''}</div>`).join('')}</div>` :
+          emptyState('star', 'لا توجد تقييمات بعد', 'كن أول من يقيّم هذه الصيدلية.')}`}
+        ${!isOwner ? `<button class="btn btn-ghost small" id="reportBtn" style="margin-bottom:12px">${icon('flag', 16, 2)}الإبلاغ عن معلومة خاطئة</button>` : '<div style="height:12px"></div>'}
+      </div></div>`,
+    mount() {
+      if (loc) {
+        const m = L.map('pmap', { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false })
+          .setView([loc.lat, loc.lng], 16);
+        tiles().addTo(m);
+        L.marker([loc.lat, loc.lng], { icon: pinIcon(p.is_open, true) }).addTo(m);
+        onCleanup(() => m.remove());
+      }
+      document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () =>
+        location.replace(`#/pharmacy/${id}?tab=${b.dataset.tab}`)));
+      $('#fav').addEventListener('click', async () => {
+        if (!requireLogin()) return;
+        try {
+          if (isFav) await q(sb.from('favorites').delete().eq('pharmacy_id', id).eq('user_id', S.user.id));
+          else await q(sb.from('favorites').insert({ pharmacy_id: id }));
+          isFav = !isFav;
+          $('#fav').style.color = isFav ? '#B42318' : 'var(--ink)';
+          $('#fav').innerHTML = icon('heart', 20, 1.8, isFav ? 'fill="#B42318"' : '');
+          toast(isFav ? 'أُضيفت إلى المفضلة' : 'أُزيلت من المفضلة');
+        } catch (e) { toast(errMsg(e), 'error'); }
+      });
+      $('#share').addEventListener('click', async () => {
+        const text = `${p.name} — ${p.address || cityName(p.city)}\nهاتف: ${p.phone}\n${loc ? `https://maps.google.com/?q=${loc.lat},${loc.lng}` : ''}\nعبر تطبيق صيدليتي السودان`;
+        try {
+          const Sh = Plug('Share');
+          if (Sh) await Sh.share({ title: p.name, text });
+          else if (navigator.share) await navigator.share({ title: p.name, text });
+          else { await navigator.clipboard.writeText(text); toast('نُسخت بيانات الصيدلية'); }
+        } catch {}
+      });
+      const cb = $('#chatBtn');
+      if (cb) cb.addEventListener('click', () => openChatWith(id));
+      const rb = $('#rateBtn');
+      if (rb) rb.addEventListener('click', () => { if (requireLogin()) rateSheet(id, myReview); });
+      const rp = $('#reportBtn');
+      if (rp) rp.addEventListener('click', () => { if (requireLogin()) reportSheet(id); });
+    }
+  };
+};
+function parseLoc(v) {
+  if (!v) return null;
+  if (typeof v === 'object' && v.coordinates) return { lng: v.coordinates[0], lat: v.coordinates[1] };
+  if (typeof v === 'string') {
+    const m = v.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)/i);
+    if (m) return { lng: +m[1], lat: +m[2] };
+    if (/^[0-9A-F]+$/i.test(v) && v.length >= 42) { // WKB hex (EWKB مع SRID)
+      const hex = v.length === 50 ? v.slice(18) : v.slice(10);
+      const rd = (h) => { const b = new DataView(new ArrayBuffer(8)); for (let i = 0; i < 8; i++) b.setUint8(i, parseInt(h.substr(i * 2, 2), 16)); return b.getFloat64(0, true); };
+      return { lng: rd(hex.slice(0, 16)), lat: rd(hex.slice(16, 32)) };
+    }
+  }
+  return null;
+}
+function haversine(a, b) {
+  const R = 6371000, r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+function rateSheet(pid, existing) {
+  let stars = existing ? existing.stars : 0;
+  openSheet(`<h3>قيّم الصيدلية</h3>
+    <div class="star-pick" id="sp">${[1,2,3,4,5].map(i => `<button aria-label="${i} نجوم" data-s="${i}">${STAR(i <= stars, 32)}</button>`).join('')}</div>
+    <div class="field" style="margin:16px 0"><label for="rv">تعليقك (اختياري)</label><textarea id="rv" class="input" maxlength="500" placeholder="كيف كانت الخدمة والأسعار؟">${esc(existing ? existing.body : '')}</textarea></div>
+    <button class="btn btn-primary" id="rvSave">حفظ التقييم</button>`, (o) => {
+    o.querySelectorAll('[data-s]').forEach(b => b.addEventListener('click', () => {
+      stars = +b.dataset.s;
+      o.querySelectorAll('[data-s]').forEach(x => (x.innerHTML = STAR(+x.dataset.s <= stars, 32)));
+    }));
+    $('#rvSave').addEventListener('click', async () => {
+      if (!stars) return toast('اختر عدد النجوم', 'error');
+      try {
+        await q(sb.from('reviews').upsert({ pharmacy_id: pid, user_id: S.user.id, stars, body: $('#rv').value.trim() || null }));
+        closeSheet(); toast('شكراً لتقييمك', 'success'); location.replace(`#/pharmacy/${pid}?tab=reviews`); render();
+      } catch (e) { toast(errMsg(e), 'error'); }
+    });
+  });
+}
+function reportSheet(pid) {
+  const types = [['closed', 'وجدتها مغلقة وهي تظهر مفتوحة'], ['wrong_price', 'السعر غير صحيح'], ['out_of_stock', 'الدواء غير متوفر رغم ظهوره'], ['other', 'شيء آخر']];
+  openSheet(`<h3>ما المشكلة؟</h3><div class="stack" style="gap:8px">${types.map(([k, v]) => `<button class="list-card" data-rt="${k}" style="padding:14px 16px">${icon('flag', 18, 1.9)}<span class="grow">${v}</span></button>`).join('')}</div>`, (o) => {
+    o.querySelectorAll('[data-rt]').forEach(b => b.addEventListener('click', async () => {
+      try { await q(sb.from('reports').insert({ pharmacy_id: pid, type: b.dataset.rt })); closeSheet(); toast('وصلنا بلاغك، شكراً لك', 'success'); }
+      catch (e) { toast(errMsg(e), 'error'); }
+    }));
+  });
+}
+async function openChatWith(pid) {
+  if (!requireLogin(`/pharmacy/${pid}`)) return;
+  try {
+    let chat = (await q(sb.from('chats').select('id').eq('user_id', S.user.id).eq('pharmacy_id', pid).limit(1)))[0];
+    if (!chat) chat = await q(sb.from('chats').insert({ user_id: S.user.id, pharmacy_id: pid }).select('id').single());
+    go(`/chat/${chat.id}`);
+  } catch (e) { toast(errMsg(e), 'error'); }
+}
+
+/* ===== الخريطة ===== */
+function tiles() {
+  return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
+}
+function pinIcon(open, big = false) {
+  const s = big ? 44 : 34;
+  return L.divIcon({ className: '', iconSize: [s, s], iconAnchor: [s / 2, s],
+    html: `<div class="pin" style="width:${s}px;height:${s}px;background:${open ? '#0B6E5B' : '#8A9894'}"><svg width="${s / 2.2}" height="${s / 2.2}" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"><path d="M12 6v12M6 12h12"/></svg></div>` });
+}
+Screens.map = async ({ query }) => {
+  const c = await getCoords();
+  const all = await q(sb.rpc('nearby_pharmacies', { lat: c.lat, lng: c.lng, radius_m: 40000, only_open: false }));
+  let filter = query.night ? 'night' : (query.open ? 'open' : 'all');
+  return {
+    html: `<div>
+      <div id="bigmap" class="map-full"></div>
+      <div class="map-top">
+        <div class="row">
+          <button class="icon-btn white" aria-label="رجوع" onclick="goBack('/home')" style="width:48px;height:48px">${icon('back')}</button>
+          <a href="#/search" class="searchbox grow" style="background:#fff;height:48px;box-shadow:0 4px 14px rgba(16,32,28,.12)">${icon('search', 18, 2)}<span class="muted">ابحث عن دواء</span></a>
+        </div>
+        <div class="chips">
+          <button class="chip" data-f="all" style="box-shadow:0 2px 8px rgba(16,32,28,.1)">الكل (${all.length})</button>
+          <button class="chip" data-f="open" style="box-shadow:0 2px 8px rgba(16,32,28,.1)"><span class="dot"></span>مفتوح الآن</button>
+          <button class="chip" data-f="night" style="box-shadow:0 2px 8px rgba(16,32,28,.1)">${icon('moon', 15, 2)}مناوبة ليلية</button>
+        </div>
+      </div>
+      <button class="icon-btn white" id="me" aria-label="موقعي" style="position:fixed;left:max(16px, calc(50% - 244px));bottom:calc(96px + var(--safe-bottom));width:48px;height:48px;color:#2563EB;z-index:10">${icon('locate', 22, 2)}</button>
+      <div class="map-card" id="mcard"></div>
+      ${nav('/map')}</div>`,
+    mount() {
+      const map = L.map('bigmap', { zoomControl: false, attributionControl: true }).setView([c.lat, c.lng], 14);
+      tiles().addTo(map);
+      onCleanup(() => map.remove());
+      const me = L.marker([c.lat, c.lng], { icon: L.divIcon({ className: '', html: '<div class="me-dot"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }), interactive: false }).addTo(map);
+      const layer = L.layerGroup().addTo(map);
+      const card = $('#mcard');
+      const showCard = (p) => {
+        const [bg, fg] = tint(p.id);
+        const href = isNative ? `geo:${p.lat},${p.lng}?q=${p.lat},${p.lng}(${encodeURIComponent(p.name)})` : `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
+        card.innerHTML = `<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:12px;box-shadow:0 -6px 24px rgba(16,32,28,.14)">
+          <a href="#/pharmacy/${p.id}" class="row" style="color:var(--ink)"><span class="avatar" style="background:${bg};color:${fg}">${initial(p.name)}</span>
+            <span class="grow col" style="gap:3px"><span class="row" style="gap:6px;font-size:16px;font-weight:700">${esc(p.name)}${p.verified ? VERIFIED : ''}</span>
+            <span class="small muted">${p.is_open ? '<b style="color:var(--brand)">مفتوحة</b>' : 'مغلقة'} · ${fmtDist(p.distance_m)}${p.closes_at && !p.night_shift ? ' · حتى ' + esc(p.closes_at) : ''}</span></span>
+            <button class="icon-btn" aria-label="إغلاق" id="cardx">${icon('x', 18, 2)}</button></a>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+            <a class="btn btn-primary" style="height:48px;font-size:14.5px" href="${href}" target="_blank" rel="noopener">${icon('nav', 18, 2)}الاتجاهات</a>
+            <a class="btn btn-soft" style="height:48px;font-size:14.5px" href="#/pharmacy/${p.id}">التفاصيل</a></div></div>`;
+        $('#cardx').addEventListener('click', e => { e.preventDefault(); card.innerHTML = ''; });
+      };
+      const draw = () => {
+        layer.clearLayers(); card.innerHTML = '';
+        document.querySelectorAll('[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === filter));
+        const list = all.filter(p => filter === 'open' ? p.is_open : filter === 'night' ? p.night_shift : true);
+        list.forEach(p => L.marker([p.lat, p.lng], { icon: pinIcon(p.is_open), title: p.name }).on('click', () => showCard(p)).addTo(layer));
+        if (!list.length) toast(filter === 'all' ? 'لا توجد صيدليات مسجلة قريبة بعد' : 'لا توجد نتائج لهذا الفلتر');
+      };
+      document.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { filter = b.dataset.f; draw(); }));
+      $('#me').addEventListener('click', async () => {
+        const n = await getCoords(true); me.setLatLng([n.lat, n.lng]); map.setView([n.lat, n.lng], 15);
+      });
+      draw();
+    }
+  };
+};
+
+/* ===== قائمة المحادثات ===== */
+Screens.chats = async () => {
+  if (!S.user) return { html: `<div class="screen"><div class="page-title"><h1>المحادثات</h1></div>${emptyState('chat', 'سجّل الدخول لتتواصل مع الصيدليات', 'اسأل عن توفر الدواء وسعره قبل أن تذهب.', `<a class="btn btn-primary" href="#/login?next=/chats" style="max-width:220px">تسجيل الدخول</a>`)}${nav('/chats')}</div>` };
+  const rows = await q(sb.from('chats').select('*, pharmacies(id, name, owner_id)').order('updated_at', { ascending: false }));
+  const draw = (rows) => rows.length ? `<div class="card divider-list" style="margin:0 16px;padding:0 14px">${rows.map(c => {
+    const iAmPharmacy = c.pharmacies && c.pharmacies.owner_id === S.user.id;
+    const title = iAmPharmacy ? `عميل · ${esc(c.pharmacies.name)}` : esc(c.pharmacies ? c.pharmacies.name : 'صيدلية');
+    const unread = iAmPharmacy ? c.unread_pharmacy : c.unread_user;
+    const [bg, fg] = tint(c.pharmacy_id);
+    return `<a href="#/chat/${c.id}" class="row" style="padding:14px 0;color:var(--ink);gap:12px">
+      <span class="avatar" style="background:${iAmPharmacy ? 'var(--field)' : bg};color:${iAmPharmacy ? 'var(--muted)' : fg}">${iAmPharmacy ? icon('user', 24, 1.8) : initial(c.pharmacies && c.pharmacies.name)}</span>
+      <span class="grow col" style="gap:4px"><span class="row" style="justify-content:space-between"><span class="bold ellipsis" style="font-size:15px">${title}</span><span class="small" style="color:${unread ? 'var(--brand)' : 'var(--muted)'};font-weight:${unread ? 600 : 400}">${ago(c.updated_at)}</span></span>
+      <span class="row" style="justify-content:space-between"><span class="small muted ellipsis">${esc(c.last_message || 'ابدأ المحادثة')}</span>${unread ? `<span style="min-width:22px;height:22px;border-radius:999px;background:var(--brand);color:#fff;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 6px">${unread}</span>` : ''}</span></span></a>`;
+  }).join('')}</div>` : emptyState('chat', 'لا توجد محادثات بعد', 'افتح صفحة أي صيدلية واضغط "دردشة" لتسألها عن دوائك.', `<a class="btn btn-soft" href="#/home" style="max-width:220px">تصفح الصيدليات</a>`);
+  return {
+    html: `<div class="screen"><div class="page-title"><h1>المحادثات</h1></div><div id="clist">${draw(rows)}</div>
+      <div class="notice warn" style="margin:16px">${icon('shieldAlert', 18, 1.9)}<span>لا تشارك بياناتك البنكية في الدردشة. الدفع يتم عند الاستلام في الصيدلية.</span></div>
+      ${nav('/chats')}</div>`,
+    mount() {
+      const ch = sb.channel('chats-list').on('postgres_changes', { event: '*', schema: 'public', table: 'chats' }, async () => {
+        try { const fresh = await q(sb.from('chats').select('*, pharmacies(id, name, owner_id)').order('updated_at', { ascending: false }));
+          const box = $('#clist'); if (box) box.innerHTML = draw(fresh); refreshUnread(); } catch {}
+      }).subscribe();
+      onCleanup(() => sb.removeChannel(ch));
+      refreshUnread();
+    }
+  };
+};
+
+/* ===== محادثة ===== */
+const signedCache = {};
+async function signedUrl(path) {
+  if (signedCache[path]) return signedCache[path];
+  const d = await q(sb.storage.from('chat-images').createSignedUrl(path, 3600));
+  return (signedCache[path] = d.signedUrl);
+}
+Screens.chat = async ({ id }) => {
+  if (!requireLogin()) return null;
+  const chat = await q(sb.from('chats').select('*, pharmacies(id, name, owner_id, phone, is_open)').eq('id', id).single());
+  const msgs = await q(sb.from('messages').select('*').eq('chat_id', id).order('created_at').limit(300));
+  const ph = chat.pharmacies;
+  const iAmPharmacy = ph.owner_id === S.user.id;
+  const [bg, fg] = tint(ph.id);
+  const bubble = (m) => {
+    const mine = m.sender_id === S.user.id;
+    const body = m.image_path ? `<img data-img="${esc(m.image_path)}" alt="صورة مرفقة" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" style="min-width:160px;min-height:120px;background:${mine ? 'rgba(255,255,255,.15)' : 'var(--field)'}">` : '';
+    return `<div class="bubble ${mine ? 'me' : 'them'}">${body}${m.body ? (body ? '<div style="margin-top:8px">' + esc(m.body) + '</div>' : esc(m.body)) : ''}</div><span class="stamp ${mine ? 'me' : 'them'}">${clock(m.created_at)}</span>`;
+  };
+  const dayLabel = (d) => { const t = new Date(); const y = new Date(Date.now() - 864e5); const s = new Date(d).toDateString();
+    return s === t.toDateString() ? 'اليوم' : s === y.toDateString() ? 'أمس' : new Date(d).toLocaleDateString('ar', { day: 'numeric', month: 'long' }); };
+  let lastDay = '';
+  const withDays = (m) => { const dl = dayLabel(m.created_at); const sep = dl !== lastDay ? `<span style="align-self:center;font-size:11.5px;color:var(--muted);background:#E9EEEC;padding:4px 12px;border-radius:999px;margin:8px 0">${dl}</span>` : ''; lastDay = dl; return sep + bubble(m); };
+  return {
+    html: `<div class="screen no-nav" style="padding-bottom:calc(84px + var(--safe-bottom))">
+      ${topbar(iAmPharmacy ? 'عميل' : esc(ph.name), { back: '/chats',
+        sub: iAmPharmacy ? `محادثة مع صيدليتك` : (ph.is_open ? '<span style="color:var(--brand)">مفتوحة الآن</span>' : 'مغلقة الآن'),
+        right: iAmPharmacy ? '' : `<a class="icon-btn soft" href="tel:${esc(ph.phone)}" aria-label="اتصال">${icon('phone', 20, 2)}</a>` })}
+      <div class="msgs" id="msgs">${msgs.length ? msgs.map(withDays).join('') :
+        `<div class="empty" style="padding:30px 10px"><div class="ic" style="background:${bg};color:${fg}">${icon('chat', 28, 1.7)}</div><h3>ابدأ المحادثة</h3><p class="small">اسأل عن توفر الدواء وسعره. يمكنك إرسال صورة الروشتة.</p></div>`}</div>
+      <form class="composer" id="cmp">
+        <label class="icon-btn" aria-label="إرفاق صورة" style="cursor:pointer;color:var(--muted)">${icon('camera', 20, 1.8)}<input type="file" id="img" accept="image/*" hidden></label>
+        <input type="text" id="txt" placeholder="اكتب رسالتك…" autocomplete="off" maxlength="2000" aria-label="الرسالة">
+        <button class="icon-btn" style="background:var(--brand);color:#fff" aria-label="إرسال" type="submit">${icon('send', 20, 2, 'style="transform:scaleX(-1)"')}</button>
+      </form></div>`,
+    mount() {
+      const box = $('#msgs');
+      const hydrate = () => box.querySelectorAll('img[data-img]').forEach(async (im) => {
+        const pth = im.dataset.img; im.removeAttribute('data-img');
+        try { im.src = await signedUrl(pth); im.style.minWidth = ''; im.style.minHeight = ''; im.style.background = 'none';
+          im.addEventListener('click', () => openExternal(im.src)); } catch {}
+      });
+      const toBottom = () => window.scrollTo(0, document.body.scrollHeight);
+      hydrate(); toBottom();
+      sb.rpc('mark_chat_read', { cid: id }).then(refreshUnread);
+      const seen = new Set(msgs.map(m => m.id));
+      const add = (m) => {
+        if (seen.has(m.id)) return; seen.add(m.id);
+        if (!box.querySelector('.bubble')) box.innerHTML = '';
+        box.insertAdjacentHTML('beforeend', withDays(m)); hydrate(); toBottom();
+        if (m.sender_id !== S.user.id) sb.rpc('mark_chat_read', { cid: id });
+      };
+      const ch = sb.channel('chat-' + id).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${id}` }, (pl) => add(pl.new)).subscribe();
+      onCleanup(() => sb.removeChannel(ch));
+      const send = async (payload) => {
+        const m = await q(sb.from('messages').insert({ chat_id: id, ...payload }).select().single());
+        add(m);
+      };
+      $('#cmp').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const t = $('#txt'), v = t.value.trim(); if (!v) return;
+        t.value = '';
+        try { await send({ body: v }); } catch (err) { t.value = v; toast(errMsg(err), 'error'); }
+      });
+      $('#img').addEventListener('change', async (e) => {
+        const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+        toast('جارٍ إرسال الصورة…');
+        try {
+          const blob = await compressImage(f, 1400, 0.78);
+          const path = `${id}/${Date.now()}.jpg`;
+          await q(sb.storage.from('chat-images').upload(path, blob, { contentType: 'image/jpeg' }));
+          await send({ image_path: path });
+        } catch (err) { toast(errMsg(err), 'error'); }
+      });
+    }
+  };
+};
+function compressImage(file, maxSide, quality) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const cv = document.createElement('canvas'); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url);
+      cv.toBlob(b => b ? res(b) : rej(new Error('compress')), 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('image')); };
+    img.src = url;
+  });
+}
+
+/* ===== حسابي ===== */
+Screens.account = async () => {
+  if (!S.user) return { html: `<div class="screen"><div class="page-title"><h1>حسابي</h1></div>${emptyState('user', 'لم تسجّل الدخول بعد', 'سجّل لتحفظ صيدلياتك المفضلة وتتواصل معها، أو لتسجّل صيدليتك.', `<div class="col" style="width:100%;max-width:260px;gap:10px"><a class="btn btn-primary" href="#/login?next=/account">تسجيل الدخول</a><a class="btn btn-soft" href="#/login?mode=signup&next=/account">إنشاء حساب</a></div>`)}${nav('/account')}</div>` };
+  const favs = await q(sb.from('favorites').select('pharmacies(id, name, is_open, verified, address, rating_avg, rating_count, night_shift, closes_at)').order('created_at', { ascending: false }));
+  const name = (S.profile && S.profile.name) || 'مستخدم';
+  const row = (ic, label, val, href, color) => `<a href="${href}" class="row" style="min-height:56px;color:var(--ink);gap:12px"><span style="width:36px;height:36px;border-radius:11px;background:${color[0]};color:${color[1]};display:flex;align-items:center;justify-content:center">${icon(ic, 18, 1.9)}</span><span class="grow" style="font-size:14.5px;font-weight:500">${label}</span><span class="small muted">${val}</span><span style="color:var(--faint)">${icon('fwd', 18, 2)}</span></a>`;
+  return {
+    html: `<div class="screen"><div class="page-title"><h1>حسابي</h1></div>
+      <div class="pad stack" style="gap:16px">
+        <div class="list-card"><span class="avatar" style="border-radius:50%;width:58px;height:58px;background:var(--brand);color:#fff;font-size:22px">${esc(name.charAt(0))}</span>
+          <span class="grow col" style="gap:2px"><span style="font-size:17px;font-weight:700">${esc(name)}</span><span class="small muted ellipsis" dir="ltr" style="text-align:right">${esc(S.user.email)}</span></span>
+          <button class="icon-btn" id="editName" aria-label="تعديل الاسم">${icon('edit', 18, 1.8)}</button></div>
+        ${S.myPharmacy ? `<a href="#/owner" class="list-card" style="background:var(--ink);border-color:var(--ink);color:#fff">
+            <span class="avatar" style="width:48px;height:48px;border-radius:14px;background:rgba(127,212,186,.16);color:var(--brand-mint)">${icon('store', 24, 1.8)}</span>
+            <span class="grow col" style="gap:3px"><span class="bold">${esc(S.myPharmacy.name)}</span><span class="small" style="color:#B9CBC5">${S.myPharmacy.verified ? 'لوحة التحكم بصيدليتك' : 'قيد المراجعة · لوحة التحكم'}</span></span>
+            <span style="color:var(--brand-mint)">${icon('fwd', 20, 2)}</span></a>` :
+          `<a href="#/register" class="list-card" style="background:var(--ink);border-color:var(--ink);color:#fff">
+            <span class="avatar" style="width:48px;height:48px;border-radius:14px;background:rgba(127,212,186,.16);color:var(--brand-mint)">${icon('store', 24, 1.8)}</span>
+            <span class="grow col" style="gap:3px"><span class="bold">هل تملك صيدلية؟</span><span class="small" style="color:#B9CBC5">سجّلها مجاناً ووصل لعملاء أكثر</span></span>
+            <span style="color:var(--brand-mint)">${icon('fwd', 20, 2)}</span></a>`}
+        ${S.profile && S.profile.is_admin ? `<a href="#/admin" class="list-card">${icon('shield', 22, 1.9)}<span class="grow bold">لوحة المشرف</span><span style="color:var(--faint)">${icon('fwd', 18, 2)}</span></a>` : ''}
+        <div><h2 style="font-size:16px;margin:4px 2px 10px">الصيدليات المفضلة</h2>
+          ${favs.length ? `<div class="stack">${favs.filter(f => f.pharmacies).map(f => pharmacyCard(f.pharmacies)).join('')}</div>` :
+          `<div class="card small muted" style="padding:16px;text-align:center;line-height:1.7">اضغط ${icon('heart', 14, 2)} في صفحة أي صيدلية لحفظها هنا</div>`}</div>
+        <div class="card" style="padding:0 16px">
+          ${row('pin', 'الموقع', S.coordsReal ? 'تلقائي' : 'افتراضي', '#/home', ['#E3F2EC', '#0B6E5B'])}
+        </div>
+        <button class="btn btn-danger" id="out">${icon('logout', 18, 2)}تسجيل الخروج</button>
+      </div>${nav('/account')}</div>`,
+    mount() {
+      $('#out').addEventListener('click', async () => { await sb.auth.signOut(); await loadSession(); S.unread = 0; toast('تم تسجيل الخروج'); go('/home'); });
+      $('#editName').addEventListener('click', () => openSheet(`<h3>تعديل الاسم</h3><div class="field" style="margin-bottom:16px"><label for="nm">الاسم</label><input id="nm" class="input" value="${esc(name)}" maxlength="60"></div><button class="btn btn-primary" id="nmSave">حفظ</button>`, () => {
+        $('#nmSave').addEventListener('click', async () => {
+          const v = $('#nm').value.trim(); if (!v) return;
+          try { await q(sb.from('profiles').update({ name: v }).eq('id', S.user.id)); S.profile.name = v; closeSheet(); render(); }
+          catch (e) { toast(errMsg(e), 'error'); }
+        });
+      }));
+      const locRow = document.querySelector('a[href="#/home"].row');
+      if (locRow) locRow.addEventListener('click', async (e) => { e.preventDefault(); toast('جارٍ تحديد موقعك…'); await getCoords(true); render(); });
+    }
+  };
+};
+
+/* ===== تسجيل صيدلية ===== */
+const Reg = { step: 1, data: {} };
+Screens.register = async () => {
+  if (!requireLogin('/register')) return null;
+  if (S.myPharmacy) { location.replace('#/owner'); return null; }
+  const d = Reg.data, step = Reg.step;
+  const names = ['بيانات الصيدلية', 'الموقع', 'التحقق من الترخيص'];
+  let body = '';
+  if (step === 1) body = `
+    <div class="field"><label for="r-name">اسم الصيدلية</label><input class="input" id="r-name" value="${esc(d.name || '')}" placeholder="مثال: صيدلية الشفاء" maxlength="80"></div>
+    <div class="field"><label for="r-phone">رقم هاتف الصيدلية</label><input class="input" id="r-phone" dir="ltr" inputmode="tel" value="${esc(d.phone || '')}" placeholder="0912345678" style="text-align:right"></div>
+    <div class="field"><label for="r-wa">رقم واتساب (اختياري)</label><input class="input" id="r-wa" dir="ltr" inputmode="tel" value="${esc(d.whatsapp || '')}" placeholder="249912345678" style="text-align:right"></div>
+    <div class="field"><label for="r-city">المدينة</label><select class="input" id="r-city">${CITIES.map(([k, v]) => `<option value="${k}" ${d.city === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+      <div class="field"><label for="r-open">يفتح</label><input class="input" id="r-open" value="${esc(d.opens_at || '8:00 ص')}"></div>
+      <div class="field"><label for="r-close">يغلق</label><input class="input" id="r-close" value="${esc(d.closes_at || '12:00 ليلاً')}"></div></div>
+    <label class="row" style="min-height:44px;font-size:14px"><input type="checkbox" id="r-night" ${d.night_shift ? 'checked' : ''} style="width:20px;height:20px;accent-color:var(--brand)">نعمل بنظام المناوبة الليلية (24 ساعة)</label>`;
+  if (step === 2) body = `
+    <div style="height:280px;border-radius:18px;overflow:hidden;position:relative">
+      <div id="rmap" style="position:absolute;inset:0"></div>
+      <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:500;pointer-events:none"><div class="pin" style="width:44px;height:44px;background:var(--brand)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"><path d="M12 6v12M6 12h12"/></svg></div></div>
+      <span style="position:absolute;bottom:10px;right:10px;left:10px;background:#fff;border-radius:12px;padding:9px 12px;font-size:12.5px;color:var(--ink-2);z-index:500">حرّك الخريطة حتى يكون الدبوس على مدخل الصيدلية</span>
+    </div>
+    <button class="btn" id="r-me" style="height:48px;background:var(--blue-soft);color:var(--blue);font-size:14px">${icon('locate', 18, 2)}أنا داخل الصيدلية الآن — استخدم موقعي</button>
+    <div class="field"><label for="r-addr">وصف العنوان</label><input class="input" id="r-addr" value="${esc(d.address || '')}" placeholder="مثال: شارع المطار، بجوار مسجد الهدى" maxlength="140"></div>`;
+  if (step === 3) body = `
+    <p style="font-size:14px;color:var(--ink-2);line-height:1.8">نراجع الترخيص يدوياً لحماية المستخدمين. بعد الموافقة تظهر صيدليتك للعملاء بشارة <b style="color:var(--brand)">موثقة</b>.</p>
+    <label class="drop">${d.license ? `${icon('check', 28, 2.2)}<b>${esc(d.license.name)}</b><span class="small muted">اضغط للتغيير</span>` :
+      `<span style="width:56px;height:56px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(11,110,91,.12)">${icon('upload', 26, 1.8)}</span><b>ارفع صورة ترخيص الصيدلية</b><span class="small muted">صورة واضحة أو PDF · حتى 5 ميغا</span>`}
+      <input type="file" id="r-lic" accept="image/*,application/pdf" aria-label="صورة الترخيص"></label>
+    <label class="list-card" style="position:relative;cursor:pointer">${icon('image', 22, 1.8)}<span class="grow col" style="gap:2px"><span class="bold" style="font-size:13.5px">${d.photo ? esc(d.photo.name) : 'صورة الصيدلية من الخارج (اختياري)'}</span><span class="small muted">تساعد العملاء على التعرّف عليها</span></span><span class="small bold" style="color:var(--brand)">${d.photo ? 'تغيير' : 'إضافة'}</span>
+      <input type="file" id="r-photo" accept="image/*" style="position:absolute;inset:0;opacity:0"></label>
+    <label class="row" style="align-items:flex-start;font-size:13px;line-height:1.7;color:var(--ink-2)"><input type="checkbox" id="r-pledge" ${d.pledge ? 'checked' : ''} style="width:20px;height:20px;margin-top:2px;accent-color:var(--brand)">أتعهد بعدم صرف أدوية الوصفة دون روشتة، وبتحديث حالة الصيدلية والمخزون باستمرار</label>`;
+  return {
+    html: `<div class="screen no-nav" style="background:#fff">
+      ${topbar('تسجيل صيدلية', { back: '/account', sub: `الخطوة ${step} من 3 · ${names[step - 1]}` })}
+      <div class="pad stack" style="padding-top:18px;gap:16px">
+        <div class="steps"><span class="on"></span><span class="${step >= 2 ? 'on' : ''}"></span><span class="${step >= 3 ? 'on' : ''}"></span></div>
+        ${body}
+        <div class="row" style="margin-top:8px">
+          ${step > 1 ? `<button class="btn btn-soft" id="r-prev" style="width:auto;padding:0 20px">السابق</button>` : ''}
+          <button class="btn btn-primary grow" id="r-next">${step === 3 ? 'إرسال للمراجعة' : 'التالي'}</button></div>
+      </div></div>`,
+    mount() {
+      const save = () => {
+        if (step === 1) Object.assign(d, { name: $('#r-name').value.trim(), phone: $('#r-phone').value.trim(), whatsapp: $('#r-wa').value.trim(),
+          city: $('#r-city').value, opens_at: $('#r-open').value.trim(), closes_at: $('#r-close').value.trim(), night_shift: $('#r-night').checked });
+        if (step === 2) d.address = $('#r-addr').value.trim();
+        if (step === 3) d.pledge = $('#r-pledge').checked;
+      };
+      if (step === 2) {
+        const start = d.loc || S.coords || DEFAULT_COORDS;
+        const m = L.map('rmap', { zoomControl: false, attributionControl: false }).setView([start.lat, start.lng], d.loc ? 18 : 15);
+        tiles().addTo(m);
+        const upd = () => { const c = m.getCenter(); d.loc = { lat: c.lat, lng: c.lng }; };
+        m.on('moveend', upd); upd();
+        onCleanup(() => m.remove());
+        $('#r-me').addEventListener('click', async () => { const c = await getCoords(true); m.setView([c.lat, c.lng], 18); });
+      }
+      if (step === 3) {
+        $('#r-lic').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return;
+          if (f.size > 5 * 1024 * 1024) return toast('الملف أكبر من 5 ميغا', 'error');
+          save(); d.license = f; render(); });
+        $('#r-photo').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; save(); d.photo = f; render(); });
+      }
+      const prev = $('#r-prev');
+      if (prev) prev.addEventListener('click', () => { save(); Reg.step--; render(); });
+      $('#r-next').addEventListener('click', async (e) => {
+        save();
+        if (step === 1) {
+          if (d.name.length < 2) return toast('أدخل اسم الصيدلية', 'error');
+          if (d.phone.replace(/\D/g, '').length < 9) return toast('أدخل رقم هاتف صحيح', 'error');
+          Reg.step = 2; return render();
+        }
+        if (step === 2) {
+          if (!d.loc) return toast('حدّد موقع الصيدلية على الخريطة', 'error');
+          Reg.step = 3; return render();
+        }
+        if (!d.license) return toast('ارفع صورة الترخيص', 'error');
+        if (!d.pledge) return toast('وافق على التعهد للمتابعة', 'error');
+        const btn = e.currentTarget; btn.disabled = true; btn.textContent = 'جارٍ الإرسال…';
+        try {
+          const uid = S.user.id, ts = Date.now();
+          let licFile = d.license, licType = d.license.type || 'application/octet-stream', ext = (d.license.name.split('.').pop() || 'jpg').toLowerCase();
+          if (licType.startsWith('image/')) { licFile = await compressImage(d.license, 2000, 0.85); licType = 'image/jpeg'; ext = 'jpg'; }
+          const licPath = `${uid}/license-${ts}.${ext}`;
+          await q(sb.storage.from('licenses').upload(licPath, licFile, { contentType: licType }));
+          let photoPath = null;
+          if (d.photo) {
+            photoPath = `${uid}/photo-${ts}.jpg`;
+            await q(sb.storage.from('pharmacy-photos').upload(photoPath, await compressImage(d.photo, 1400, 0.8), { contentType: 'image/jpeg' }));
+          }
+          await q(sb.from('pharmacies').insert({
+            owner_id: uid, name: d.name, phone: d.phone, whatsapp: d.whatsapp || null, address: d.address || null, city: d.city,
+            location: `SRID=4326;POINT(${d.loc.lng} ${d.loc.lat})`, opens_at: d.opens_at || null, closes_at: d.closes_at || null,
+            night_shift: !!d.night_shift, is_open: false, license_path: licPath, photo_path: photoPath
+          }));
+          Reg.step = 1; Reg.data = {};
+          await loadSession();
+          toast('تم الإرسال! سنراجع الترخيص قريباً', 'success');
+          location.replace('#/owner');
+        } catch (err) { console.error(err); toast(errMsg(err), 'error'); btn.disabled = false; btn.textContent = 'إرسال للمراجعة'; }
+      });
+    }
+  };
+};
+
+/* ===== لوحة الصيدلي ===== */
+Screens.owner = async () => {
+  if (!requireLogin('/owner')) return null;
+  await loadSession();
+  const p = S.myPharmacy;
+  if (!p) { location.replace('#/register'); return null; }
+  const [inv, chats] = await Promise.all([
+    q(sb.from('inventory').select('product_id, status, price, updated_at, products(name, rx)').eq('pharmacy_id', p.id)),
+    q(sb.from('chats').select('unread_pharmacy').eq('pharmacy_id', p.id))
+  ]);
+  inv.sort((a, b) => a.products.name.localeCompare(b.products.name, 'ar'));
+  const unread = chats.reduce((n, c) => n + c.unread_pharmacy, 0);
+  const segBtn = (r, v, label) => `<button data-pid="${r.product_id}" data-st="${v}" class="${r.status === v ? 'on-' + v : ''}" aria-pressed="${r.status === v}">${label}</button>`;
+  const stat = (ic, color, val, label, href) => `<${href ? `a href="${href}"` : 'div'} class="card" style="padding:12px;display:flex;flex-direction:column;gap:6px;color:var(--ink)"><span style="color:${color}">${icon(ic, 20, 1.8)}</span><span style="font-size:19px;font-weight:700">${val}</span><span class="small muted">${label}</span></${href ? 'a' : 'div'}>`;
+  return {
+    html: `<div class="screen">
+      <div class="page-title row" style="justify-content:space-between;align-items:flex-start">
+        <div class="col" style="gap:2px"><span class="small muted">لوحة التحكم</span><h1 style="font-size:21px">${esc(p.name)}</h1></div>
+        <a href="#/pharmacy/${p.id}" class="icon-btn" aria-label="عرض صفحة الصيدلية">${icon('eye', 20, 1.8)}</a></div>
+      <div class="pad stack" style="gap:16px">
+        ${p.verified ? '' : `<div class="notice warn">${icon('shieldAlert', 18, 1.9)}<span><b>قيد المراجعة:</b> صيدليتك لا تظهر للعملاء حتى نتحقق من الترخيص. جهّز مخزونك الآن ليظهر مباشرة بعد التوثيق.</span></div>`}
+        <button class="toggle-card" id="openT" style="background:${p.is_open ? 'var(--brand)' : '#5B6B67'}" aria-pressed="${p.is_open}">
+          <span class="grow col" style="gap:4px"><span style="font-size:13px;opacity:.85">حالة الصيدلية الآن</span><span style="font-size:22px;font-weight:700">${p.is_open ? 'مفتوحة' : 'مغلقة'}</span>
+          <span style="font-size:12.5px;opacity:.85">حُدّثت ${ago(p.open_updated_at)} · اضغط ${p.is_open ? 'للإغلاق' : 'للفتح'}</span></span>
+          <span class="switch"><i style="left:${p.is_open ? '4px' : '32px'}"></i></span></button>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+          ${stat('chat', '#C2410C', unread, 'رسائل جديدة', '#/chats')}
+          ${stat('pill', '#1D4ED8', inv.length, 'صنف في المخزون')}
+          ${stat('star', '#B54708', p.rating_count ? p.rating_avg : '—', `${p.rating_count} تقييم`)}
+        </div>
+        <div class="row" style="justify-content:space-between;margin-top:4px"><h2 style="font-size:16px">المخزون والأسعار</h2>
+          <button class="row small bold" id="addItem" style="color:var(--brand);min-height:44px;gap:4px">${icon('plus', 18, 2)}إضافة صنف</button></div>
+        ${inv.length ? `<div class="card divider-list" style="padding:0 14px">${inv.map(r => `<div style="padding:12px 0" class="col">
+          <div class="row"><span class="grow bold ellipsis" style="font-size:14px">${esc(r.products.name)}</span>
+            <span class="seg">${segBtn(r, 'ok', 'متوفر')}${segBtn(r, 'low', 'قليل')}${segBtn(r, 'out', 'نفد')}</span></div>
+          <div class="row" style="gap:8px"><label class="small muted" for="pr-${r.product_id}">السعر</label>
+            <input id="pr-${r.product_id}" data-price="${r.product_id}" class="input" inputmode="decimal" dir="ltr" value="${r.price ?? ''}" placeholder="—" style="height:38px;width:120px;border-radius:10px;font-size:14px;text-align:right">
+            <span class="small muted grow">ج.س</span><span class="small muted">${ago(r.updated_at)}</span>
+            <button class="icon-btn" data-del="${r.product_id}" aria-label="حذف الصنف" style="width:38px;height:38px;background:none;color:var(--faint)">${icon('x', 16, 2)}</button></div></div>`).join('')}</div>
+          <p class="small muted" style="line-height:1.7">كل تغيير يُحفظ فوراً ويظهر للعملاء مع وقت التحديث.</p>` :
+        emptyState('pill', 'مخزونك فارغ', 'أضف الأصناف المتوفرة لديك ليجدك العملاء عند البحث عنها.', `<button class="btn btn-primary" id="addItem2" style="max-width:220px">${icon('plus', 18, 2)}إضافة أول صنف</button>`)}
+      </div>${nav('/owner')}</div>`,
+    mount() {
+      $('#openT').addEventListener('click', async () => {
+        try { await q(sb.from('pharmacies').update({ is_open: !p.is_open }).eq('id', p.id)); toast(p.is_open ? 'أصبحت الصيدلية مغلقة' : 'أصبحت الصيدلية مفتوحة', 'success'); render(); }
+        catch (e) { toast(errMsg(e), 'error'); }
+      });
+      document.querySelectorAll('[data-st]').forEach(b => b.addEventListener('click', async () => {
+        const pid = b.dataset.pid, st = b.dataset.st;
+        try {
+          await q(sb.from('inventory').update({ status: st }).eq('pharmacy_id', p.id).eq('product_id', pid));
+          b.parentElement.querySelectorAll('button').forEach(x => { x.className = x.dataset.st === st ? 'on-' + st : ''; x.setAttribute('aria-pressed', x.dataset.st === st); });
+        } catch (e) { toast(errMsg(e), 'error'); }
+      }));
+      document.querySelectorAll('[data-price]').forEach(inp => inp.addEventListener('change', async () => {
+        const v = inp.value.replace(/[,\s]/g, '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+        const price = v === '' ? null : Number(v);
+        if (price != null && (isNaN(price) || price < 0)) return toast('أدخل سعراً صحيحاً', 'error');
+        try { await q(sb.from('inventory').update({ price }).eq('pharmacy_id', p.id).eq('product_id', inp.dataset.price)); toast('تم حفظ السعر', 'success'); }
+        catch (e) { toast(errMsg(e), 'error'); }
+      }));
+      document.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+        try { await q(sb.from('inventory').delete().eq('pharmacy_id', p.id).eq('product_id', b.dataset.del)); render(); }
+        catch (e) { toast(errMsg(e), 'error'); }
+      }));
+      const add = () => addItemSheet(p.id, new Set(inv.map(r => r.product_id)));
+      ['#addItem', '#addItem2'].forEach(s => { const el = $(s); if (el) el.addEventListener('click', add); });
+    }
+  };
+};
+function addItemSheet(pharmacyId, existing) {
+  openSheet(`<h3>إضافة صنف للمخزون</h3>
+    <label class="searchbox" style="margin-bottom:12px">${icon('search', 18, 2)}<input id="aq" placeholder="ابحث في الكتالوج" autocomplete="off"></label>
+    <div id="ares" class="divider-list" style="min-height:200px"></div>
+    <p class="small muted" style="margin-top:12px;line-height:1.7">لم تجد الصنف؟ أرسل اسمه لنا عبر الدعم وسنضيفه للكتالوج.</p>`, () => {
+    const input = $('#aq'), box = $('#ares'); let t;
+    const run = async () => {
+      const term = input.value.trim();
+      try {
+        const rows = term.length >= 2 ? await q(sb.rpc('search_products', { q: term })) : await q(sb.from('products').select('*').order('name').limit(40));
+        box.innerHTML = rows.length ? rows.map(r => `<button class="row" data-add="${r.id}" style="width:100%;padding:12px 0;text-align:right" ${existing.has(r.id) ? 'disabled' : ''}>
+          <span class="grow col" style="gap:2px"><span class="bold" style="font-size:14px">${esc(r.name)}</span>${r.generic ? `<span class="small muted">${esc(r.generic)}</span>` : ''}</span>
+          ${existing.has(r.id) ? '<span class="small muted">مضاف</span>' : `<span class="icon-btn soft" style="width:36px;height:36px">${icon('plus', 18, 2)}</span>`}</button>`).join('') :
+          `<p class="small muted" style="padding:20px 0;text-align:center">لا نتائج</p>`;
+        box.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', async () => {
+          try {
+            await q(sb.from('inventory').insert({ pharmacy_id: pharmacyId, product_id: b.dataset.add, status: 'ok' }));
+            existing.add(b.dataset.add); b.disabled = true; b.lastElementChild.outerHTML = '<span class="small" style="color:var(--brand);font-weight:600">تمت الإضافة</span>';
+            closeSheet._dirty = true;
+          } catch (e) { toast(errMsg(e), 'error'); }
+        }));
+      } catch (e) { box.innerHTML = `<p class="small muted">${errMsg(e)}</p>`; }
+    };
+    input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(run, 300); });
+    run();
+    const ov = $('#sheet');
+    ov.addEventListener('click', (e) => { if (e.target === ov && closeSheet._dirty) { closeSheet._dirty = false; render(); } });
+  });
+}
+
+/* ===== لوحة المشرف ===== */
+Screens.admin = async ({ query }) => {
+  if (!requireLogin('/admin')) return null;
+  if (!S.profile || !S.profile.is_admin) return { html: `<div class="screen no-nav">${topbar('غير مسموح')}${emptyState('lock', 'هذه الصفحة للمشرف فقط', '')}</div>` };
+  const tab = query.tab || 'pending';
+  let content = '';
+  if (tab === 'pending') {
+    const rows = await q(sb.from('pharmacies').select('*').eq('verified', false).order('created_at'));
+    content = rows.length ? rows.map(p => `<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:10px">
+      <div class="col" style="gap:2px"><b>${esc(p.name)}</b><span class="small muted">${esc(cityName(p.city))}${p.address ? ' · ' + esc(p.address) : ''} · <span dir="ltr">${esc(p.phone)}</span></span><span class="small muted">سُجّلت ${ago(p.created_at)}</span></div>
+      <div class="row"><button class="btn btn-soft" style="height:44px;font-size:14px" data-lic="${esc(p.license_path || '')}">${icon('file', 18, 2)}عرض الترخيص</button>
+        <button class="btn btn-primary" style="height:44px;font-size:14px" data-verify="${p.id}">${icon('check', 18, 2)}توثيق</button></div></div>`).join('') :
+      emptyState('shield', 'لا توجد طلبات معلقة', 'كل الصيدليات المسجلة موثقة.');
+  } else if (tab === 'reports') {
+    const rows = await q(sb.from('reports').select('*, pharmacies(name)').order('created_at', { ascending: false }).limit(100));
+    const T = { closed: 'مغلقة وتظهر مفتوحة', wrong_price: 'سعر خاطئ', out_of_stock: 'غير متوفر', other: 'أخرى' };
+    content = rows.length ? `<div class="card divider-list" style="padding:0 14px">${rows.map(r => `<div class="row" style="padding:12px 0"><span class="grow col" style="gap:2px"><b style="font-size:14px">${esc(r.pharmacies ? r.pharmacies.name : '')}</b><span class="small muted">${T[r.type]} · ${ago(r.created_at)}</span></span><button class="icon-btn" data-rdel="${r.id}" aria-label="حذف البلاغ">${icon('check', 18, 2)}</button></div>`).join('')}</div>` :
+      emptyState('flag', 'لا توجد بلاغات', '');
+  } else {
+    content = `<form id="prodForm" class="card stack" style="padding:16px;gap:14px">
+      <div class="field"><label for="p-name">اسم الصنف كما يُباع</label><input class="input" id="p-name" required placeholder="مثال: بنادول إكسترا 24 قرص"></div>
+      <div class="field"><label for="p-gen">الاسم العلمي</label><input class="input" id="p-gen" placeholder="مثال: باراسيتامول + كافيين"></div>
+      <div class="field"><label for="p-cat">الفئة</label><select class="input" id="p-cat"><option value="medicine">أدوية</option><option value="gloves">قفازات</option><option value="supplies">مستلزمات</option></select></div>
+      <label class="row" style="min-height:44px;font-size:14px"><input type="checkbox" id="p-rx" style="width:20px;height:20px;accent-color:var(--brand)">يحتاج وصفة طبية</label>
+      <button class="btn btn-primary" type="submit">${icon('plus', 18, 2)}إضافة للكتالوج</button></form>`;
+  }
+  const tabs = [['pending', 'طلبات التوثيق'], ['reports', 'البلاغات'], ['catalog', 'الكتالوج']];
+  return {
+    html: `<div class="screen no-nav">${topbar('لوحة المشرف', { back: '/account' })}
+      <div class="pad" style="padding-top:12px"><div class="chips">${tabs.map(([k, v]) => `<a class="chip ${tab === k ? 'on' : ''}" href="#/admin?tab=${k}">${v}</a>`).join('')}</div></div>
+      <div class="pad stack" style="padding-top:16px">${content}</div></div>`,
+    mount() {
+      document.querySelectorAll('[data-lic]').forEach(b => b.addEventListener('click', async () => {
+        if (!b.dataset.lic) return toast('لا يوجد ترخيص مرفوع', 'error');
+        try { const d = await q(sb.storage.from('licenses').createSignedUrl(b.dataset.lic, 600)); openExternal(d.signedUrl); }
+        catch (e) { toast(errMsg(e), 'error'); }
+      }));
+      document.querySelectorAll('[data-verify]').forEach(b => b.addEventListener('click', async () => {
+        try { await q(sb.from('pharmacies').update({ verified: true }).eq('id', b.dataset.verify)); toast('تم توثيق الصيدلية', 'success'); render(); }
+        catch (e) { toast(errMsg(e), 'error'); }
+      }));
+      document.querySelectorAll('[data-rdel]').forEach(b => b.addEventListener('click', async () => {
+        try { await q(sb.from('reports').delete().eq('id', b.dataset.rdel)); render(); } catch (e) { toast(errMsg(e), 'error'); }
+      }));
+      const f = $('#prodForm');
+      if (f) f.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = $('#p-name').value.trim(); if (!name) return;
+        try {
+          await q(sb.from('products').insert({ name, generic: $('#p-gen').value.trim() || null, category: $('#p-cat').value, rx: $('#p-rx').checked }));
+          toast('أُضيف الصنف', 'success'); f.reset();
+        } catch (err) { toast(errMsg(err), 'error'); }
+      });
+    }
+  };
+};
+
+/* ---------- الروابط الخارجية (خرائط، واتساب، ملفات) ---------- */
+function openExternal(url) {
+  if (isNative) location.href = url; // Capacitor يفتحها في التطبيق المناسب (خرائط جوجل، واتساب، المتصفح)
+  else window.open(url, '_blank', 'noopener');
+}
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[target="_blank"]');
+  if (!a) return;
+  e.preventDefault(); openExternal(a.href);
+});
+
+/* ---------- التشغيل ---------- */
+(async function boot() {
+  const SBar = isNative && Plug('StatusBar');
+  if (SBar) { try { await SBar.setBackgroundColor({ color: '#0B6E5B' }); await SBar.setStyle({ style: 'DARK' }); } catch {} }
+  const App = isNative && Plug('App');
+  if (App) App.addListener('backButton', () => {
+    if ($('#sheet')) return closeSheet();
+    const n = parseHash().name;
+    if (n === 'home' || n === 'login') App.exitApp(); else history.back();
+  });
+  await loadSession();
+  sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT' || ev === 'TOKEN_REFRESHED') loadSession(); });
+  refreshUnread();
+  const first = await kv.get('seen_intro');
+  if (!S.user && !first && !location.hash) { await kv.set('seen_intro', '1'); location.replace('#/login'); }
+  render();
+})();
+</script>
+</body>
+</html>
