@@ -318,24 +318,30 @@ async function q(promise) { const { data, error } = await promise; if (error) th
 /* ---------- الموقع ---------- */
 const LOC_MAX_AGE = 10 * 60 * 1000;   // الموقع المحفوظ صالح 10 دقائق ثم يُحدَّث
 const LOC_GOOD_ACC = 25;               // نتوقف فور الوصول لدقة 25 متراً أو أفضل
+const CITY_COORDS = {
+  portsudan: [19.6158, 37.2164], khartoum: [15.5007, 32.5599], omdurman: [15.6445, 32.4777], bahri: [15.6333, 32.5333],
+  madani: [14.4012, 33.5199], kassala: [15.4510, 36.4000], gedaref: [14.0350, 35.3833], atbara: [17.7020, 33.9864],
+  shendi: [16.6917, 33.4333], damer: [17.5928, 33.9590], dongola: [19.1667, 30.4833], obeid: [13.1833, 30.2167],
+  kosti: [13.1667, 32.6667], sennar: [13.5500, 33.6000], damazin: [11.7891, 34.3592], nyala: [12.0500, 24.8833], fasher: [13.6333, 25.3500]
+};
+let lastLocErr = '';
 
-// يراقب GPS لبضع ثوانٍ ويأخذ أدق قراءة بدل أول قراءة (غالباً تكون من الشبكة وغير دقيقة)
-async function locateBest(maxWait = 12000) {
-  const G = isNative && Plug('Geolocation');
-  if (G) { try { const p = await G.checkPermissions(); if (p.location !== 'granted') await G.requestPermissions(); } catch {} }
-  else if (!navigator.geolocation) throw new Error('no geo');
+function locErrText(e) {
+  const m = String((e && (e.message || e.code)) || e || '').toLowerCase();
+  if (m.includes('not enabled') || m.includes('disabled') || m.includes('services')) return 'خدمة الموقع (GPS) مغلقة في هاتفك. افتحها من الإعدادات السريعة.';
+  if (m.includes('denied') || m.includes('permission') || m === '1') return 'لم تسمح للتطبيق بالوصول إلى موقعك. اسمح به من إعدادات التطبيق ← الأذونات ← الموقع.';
+  if (m.includes('timeout') || m === '3') return 'لم يلتقط الهاتف إشارة الموقع. جرّب قرب نافذة أو في مكان مفتوح.';
+  return 'تعذّر تحديد موقعك.';
+}
+
+// المحاولة 1: إضافة Capacitor (GPS عالي الدقة، أفضل قراءة خلال ثوانٍ)
+function watchBest(watchFn, clearFn, maxWait) {
   return new Promise((resolve, reject) => {
-    let best = null, watchId = null, done = false;
+    let best = null, id = null, done = false, lastErr = null;
     const finish = () => {
       if (done) return; done = true; clearTimeout(timer);
-      if (watchId != null) { if (G) G.clearWatch({ id: watchId }); else navigator.geolocation.clearWatch(watchId); }
-      if (best) return resolve(best);
-      // فشل GPS (داخل مبنى مثلاً): نجرّب موقع الشبكة الأقل دقة
-      const lowOpts = { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 };
-      const p = G ? G.getCurrentPosition(lowOpts)
-        : new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, lowOpts));
-      p.then(pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Math.round(pos.coords.accuracy || 9999), t: Date.now() }))
-       .catch(reject);
+      if (id != null) { try { clearFn(id); } catch {} }
+      best ? resolve(best) : reject(lastErr || new Error('timeout'));
     };
     const onPos = (pos) => {
       if (!pos || !pos.coords) return;
@@ -343,11 +349,52 @@ async function locateBest(maxWait = 12000) {
       if (!best || c.acc < best.acc) best = c;
       if (best.acc <= LOC_GOOD_ACC) finish();
     };
-    const opts = { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 };
+    const onErr = (e) => { lastErr = e; const m = String((e && e.message) || '').toLowerCase(); if (!best && (m.includes('denied') || m.includes('not enabled') || (e && e.code === 1))) finish(); };
     const timer = setTimeout(finish, maxWait);
-    if (G) G.watchPosition(opts, (pos, err) => { if (err) { if (!best) finish(); return; } onPos(pos); }).then(id => { watchId = id; if (done) G.clearWatch({ id }); });
-    else watchId = navigator.geolocation.watchPosition(onPos, () => { if (!best) finish(); }, opts);
+    try {
+      const r = watchFn(onPos, onErr);
+      if (r && r.then) r.then(v => { id = v; if (done) { try { clearFn(v); } catch {} } }).catch(e => { lastErr = e; finish(); });
+      else id = r;
+    } catch (e) { lastErr = e; finish(); }
   });
+}
+function oneShot(getFn, ms = 6000) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => reject(new Error('timeout')), ms); // بعض الأجهزة لا تستدعي الخطأ أبداً
+    try {
+      const r = getFn(pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Math.round(pos.coords.accuracy || 9999), t: Date.now() }), reject);
+      if (r && r.then) r.then(pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Math.round(pos.coords.accuracy || 9999), t: Date.now() })).catch(reject);
+    } catch (e) { reject(e); }
+  });
+}
+
+async function locateBest(maxWait = 12000) {
+  const G = isNative && Plug('Geolocation');
+  const hi = { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 };
+  const lo = { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 };
+  const errs = [];
+  if (G) {
+    try {
+      const p = await G.checkPermissions();
+      if (p.location !== 'granted' && p.coarseLocation !== 'granted') {
+        const r = await G.requestPermissions();
+        if (r.location !== 'granted' && r.coarseLocation !== 'granted') throw new Error('permission denied');
+      }
+    } catch (e) { errs.push(e); if (String(e.message || '').toLowerCase().includes('denied')) { lastLocErr = locErrText(e); throw e; } }
+    // GPS عالي الدقة
+    try { return await watchBest((ok, bad) => G.watchPosition(hi, (pos, err) => err ? bad(err) : ok(pos)), (id) => G.clearWatch({ id }), maxWait); } catch (e) { errs.push(e); }
+    // موقع الشبكة (يعمل داخل المباني)
+    try { return await oneShot(() => G.getCurrentPosition(lo)); } catch (e) { errs.push(e); }
+  }
+  // المحاولة 3: موقع متصفح WebView
+  if (navigator.geolocation) {
+    try { return await watchBest((ok, bad) => navigator.geolocation.watchPosition(ok, bad, hi), (id) => navigator.geolocation.clearWatch(id), G ? 5000 : maxWait); } catch (e) { errs.push(e); }
+    try { return await oneShot((ok, bad) => navigator.geolocation.getCurrentPosition(ok, bad, lo)); } catch (e) { errs.push(e); }
+  }
+  const e = errs.find(x => /not enabled|denied|permission/i.test(String(x && x.message))) || errs[0] || new Error('no geo');
+  lastLocErr = locErrText(e);
+  console.warn('location failed', errs.map(x => x && (x.message || x.code)));
+  throw e;
 }
 
 // اسم الحي والمدينة من OpenStreetMap (بالعربية)
@@ -361,31 +408,51 @@ async function placeName(c) {
   } catch { return ''; }
 }
 
-async function saveCoords(c) {
+async function saveCoords(c, lookupName = true) {
   S.coords = c; S.coordsReal = true;
   await kv.set('coords', JSON.stringify(c));
-  placeName(c).then(n => { if (n) { S.coords.place = n; kv.set('coords', JSON.stringify(S.coords)); const el = $('#locName'); if (el) el.textContent = n; } });
+  if (lookupName) placeName(c).then(n => { if (n && S.coords === c) { c.place = n; kv.set('coords', JSON.stringify(c)); const el = $('#locName'); if (el) el.textContent = n; } });
+}
+
+async function setManualCity(slug) {
+  const [lat, lng] = CITY_COORDS[slug];
+  await saveCoords({ lat, lng, acc: null, t: Date.now(), manual: true, place: cityName(slug) }, false);
 }
 
 async function getCoords(force = false) {
-  if (S.coords && S.coordsReal && !force && Date.now() - (S.coords.t || 0) < LOC_MAX_AGE) return S.coords;
   if (!force && !S.coords) {
     const saved = await kv.get('coords');
     if (saved) { try { S.coords = JSON.parse(saved); S.coordsReal = true; } catch {} }
   }
-  // موقع محفوظ قديم: نستخدمه فوراً ونحدّثه في الخلفية
   if (!force && S.coords && S.coordsReal) {
-    if (Date.now() - (S.coords.t || 0) >= LOC_MAX_AGE) refreshInBackground();
+    if (!S.coords.manual && Date.now() - (S.coords.t || 0) >= LOC_MAX_AGE) refreshInBackground();
     return S.coords;
   }
   try {
-    await saveCoords(await locateBest(force ? 15000 : 6000));
+    await saveCoords(await locateBest(force ? 10000 : 6000));
+    S.lastLocOk = true;
     if (force) toast(`تم تحديد موقعك بدقة ${S.coords.acc} م`, 'success');
   } catch {
-    if (force) toast('تعذّر تحديد موقعك، فعّل خدمة الموقع (GPS)', 'error');
+    S.lastLocOk = false;
     S.coords = S.coords || { ...DEFAULT_COORDS };
+    if (force) locationSheet(lastLocErr);
   }
   return S.coords;
+}
+
+// نافذة اختيار الموقع: تلقائي أو اختيار المدينة يدوياً
+function locationSheet(errText) {
+  openSheet(`<h3>حدّد موقعك</h3>
+    ${errText ? `<div class="notice warn" style="margin-bottom:14px">${icon('shieldAlert', 18, 1.9)}<span>${errText}</span></div>` : ''}
+    <button class="btn btn-primary" id="lsAuto">${icon('locate', 20, 2)}تحديد تلقائي بالـ GPS</button>
+    <p class="small muted" style="margin:16px 0 10px">أو اختر مدينتك:</p>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">${Object.keys(CITY_COORDS).map(k =>
+      `<button class="chip" data-city="${k}" style="justify-content:center;height:44px;${S.coords && S.coords.manual && S.coords.place === cityName(k) ? 'background:var(--brand);color:#fff;border-color:var(--brand)' : ''}">${cityName(k)}</button>`).join('')}</div>`, (o) => {
+    $('#lsAuto').addEventListener('click', async () => { closeSheet(); toast('جارٍ تحديد موقعك…'); await getCoords(true); if (S.lastLocOk) render(); });
+    o.querySelectorAll('[data-city]').forEach(b => b.addEventListener('click', async () => {
+      await setManualCity(b.dataset.city); closeSheet(); toast('تم اختيار ' + cityName(b.dataset.city), 'success'); render();
+    }));
+  });
 }
 
 let bgLocating = false;
@@ -394,7 +461,6 @@ async function refreshInBackground() {
   try {
     const old = S.coords, c = await locateBest(12000);
     await saveCoords(c);
-    // إذا تحرّك المستخدم أكثر من 150 متراً، نعيد ترتيب الصيدليات
     if (old && haversine(old, c) > 150 && ['home', 'map'].includes(parseHash().name)) render();
   } catch {} finally { bgLocating = false; }
 }
@@ -602,7 +668,7 @@ Screens.home = async () => {
           <button class="col" id="loc" style="gap:2px;text-align:right;color:#fff">
             <span style="font-size:13px;color:#CDE9E0">موقعك الحالي</span>
             <span class="row" style="gap:6px;font-size:15.5px;font-weight:600">${icon('pin', 18, 2)}<span id="locName" class="ellipsis" style="max-width:230px">${S.coordsReal ? esc(S.coords.place || 'موقعك الحالي') : 'الموقع غير محدد'}</span>${icon('locate', 15, 2)}</span>
-            ${S.coordsReal && S.coords.acc ? `<span style="font-size:11.5px;color:#CDE9E0">الدقة ±${S.coords.acc} م · اضغط للتحديث</span>` : `<span style="font-size:11.5px;color:#CDE9E0">اضغط لتحديد موقعك</span>`}
+            ${S.coordsReal && S.coords.manual ? `<span style="font-size:11.5px;color:#CDE9E0">مدينة مختارة يدوياً · اضغط للتغيير</span>` : S.coordsReal && S.coords.acc ? `<span style="font-size:11.5px;color:#CDE9E0">الدقة ±${S.coords.acc} م · اضغط للتحديث</span>` : `<span style="font-size:11.5px;color:#CDE9E0">اضغط لتحديد موقعك</span>`}
           </button>
           <a class="icon-btn glass" href="#/chats" aria-label="المحادثات">${icon('chat', 22, 1.8)}</a>
         </div>
@@ -618,7 +684,7 @@ Screens.home = async () => {
         <a class="cat" href="#/search?cat=supplies"><span style="color:#C2410C">${icon('kit', 26, 1.8)}</span>مستلزمات</a>
         <a class="cat" href="#/map?night=1"><span style="color:#7C3AED">${icon('moon', 26, 1.8)}</span>مناوبة ليلية</a>
       </div>
-      ${!S.coordsReal ? `<div class="notice warn" style="margin:18px 20px 0">${icon('pin', 18, 2)}<span>لم نتمكن من تحديد موقعك، لذلك المسافات تقريبية. فعّل الموقع (GPS) ثم <button id="loc2" style="color:inherit;font-weight:700;text-decoration:underline">اضغط هنا</button>.</span></div>` : ''}
+      ${!S.coordsReal ? `<div class="notice warn" style="margin:18px 20px 0">${icon('pin', 18, 2)}<span>لم نتمكن من تحديد موقعك. <button id="loc2" style="color:inherit;font-weight:700;text-decoration:underline">حدّد موقعك أو اختر مدينتك</button>.</span></div>` : ''}
       <div class="section-head"><h2>${far ? 'أقرب الصيدليات المسجلة' : openCount ? `${openCount} مفتوحة بالقرب منك` : 'الصيدليات القريبة'}</h2><a href="#/map" class="small bold">عرض الخريطة</a></div>
       ${far && S.coordsReal ? `<p class="small muted" style="padding:0 20px 10px;margin-top:-4px">لا توجد صيدليات مسجلة ضمن 15 كم منك حتى الآن.</p>` : ''}
       <div class="pad stack">${list.length ? list.slice(0, 20).map(pharmacyCard).join('') :
@@ -626,7 +692,7 @@ Screens.home = async () => {
       ${nav('/home')}</div>`,
     mount() {
       $('#hs').addEventListener('submit', e => { e.preventDefault(); const v = $('#hq').value.trim(); go('/search', v ? { q: v } : null); });
-      const relocate = async () => { toast('جارٍ تحديد موقعك…'); await getCoords(true); render(); };
+      const relocate = () => locationSheet('');
       $('#loc').addEventListener('click', relocate);
       const l2 = $('#loc2'); if (l2) l2.addEventListener('click', relocate);
     }
@@ -1099,7 +1165,7 @@ Screens.account = async () => {
           ${favs.length ? `<div class="stack">${favs.filter(f => f.pharmacies).map(f => pharmacyCard(f.pharmacies)).join('')}</div>` :
           `<div class="card small muted" style="padding:16px;text-align:center;line-height:1.7">اضغط ${icon('heart', 14, 2)} في صفحة أي صيدلية لحفظها هنا</div>`}</div>
         <div class="card" style="padding:0 16px">
-          ${row('pin', 'الموقع', S.coordsReal ? 'تلقائي' : 'افتراضي', '#/home', ['#E3F2EC', '#0B6E5B'])}
+          ${row('pin', 'الموقع', S.coordsReal ? esc(S.coords.place || (S.coords.manual ? 'يدوي' : 'تلقائي')) : 'غير محدد', '#/home', ['#E3F2EC', '#0B6E5B'])}
         </div>
         <p class="small muted" style="text-align:center">الإصدار ${APP_BUILD}</p>
         <button class="btn btn-danger" id="out">${icon('logout', 18, 2)}تسجيل الخروج</button>
@@ -1114,7 +1180,7 @@ Screens.account = async () => {
         });
       }));
       const locRow = document.querySelector('a[href="#/home"].row');
-      if (locRow) locRow.addEventListener('click', async (e) => { e.preventDefault(); toast('جارٍ تحديد موقعك…'); await getCoords(true); render(); });
+      if (locRow) locRow.addEventListener('click', (e) => { e.preventDefault(); locationSheet(''); });
     }
   };
 };
