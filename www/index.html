@@ -18,14 +18,17 @@
   --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%;background:var(--bg)}
+html,body{margin:0;height:100%;background:var(--bg);overflow-x:hidden;max-width:100%}
+input,select,textarea{min-width:0;max-width:100%}
+.searchbox input,.search-float input,.composer input[type=text]{width:100%;min-width:0}
+.search-float form,.searchbox,.row > *{min-width:0}
 body{font-family:'IBM Plex Sans Arabic',system-ui,-apple-system,'Segoe UI',Tahoma,sans-serif;color:var(--ink);font-size:15px;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
 button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none;padding:0}
 a{color:var(--brand);text-decoration:none}
 svg{flex-shrink:0}
 h1,h2,h3,p{margin:0}
-#app{max-width:520px;margin:0 auto;min-height:100%;position:relative;background:var(--bg)}
+#app{max-width:520px;margin:0 auto;min-height:100%;position:relative;background:var(--bg);overflow-x:clip}
 .screen{min-height:100vh;padding-bottom:calc(88px + var(--safe-bottom))}
 .screen.no-nav{padding-bottom:calc(24px + var(--safe-bottom))}
 .pad{padding:0 20px}
@@ -71,10 +74,10 @@ h1,h2,h3,p{margin:0}
 textarea.input{height:auto;min-height:90px;padding:12px 14px;resize:vertical}
 select.input{appearance:none}
 .searchbox{display:flex;align-items:center;gap:8px;height:46px;border-radius:14px;background:var(--field);padding:0 12px;color:var(--muted)}
-.searchbox input{all:unset;flex:1;color:var(--ink);font-size:15px}
+.searchbox input{all:unset;flex:1;width:100%;min-width:0;color:var(--ink);font-size:15px}
 .search-float{margin:-36px 20px 0;background:#fff;border-radius:18px;box-shadow:0 8px 24px rgba(16,32,28,.10);padding:6px 6px 6px 8px;display:flex;align-items:center;gap:8px;position:relative;z-index:2}
 .search-float form{display:flex;align-items:center;gap:10px;flex:1;padding-right:12px;color:var(--muted)}
-.search-float input{all:unset;flex:1;height:44px;color:var(--ink);font-size:15px}
+.search-float input{all:unset;flex:1;width:100%;min-width:0;height:44px;color:var(--ink);font-size:15px}
 
 /* cards */
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px}
