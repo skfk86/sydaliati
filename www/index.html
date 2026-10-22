@@ -311,30 +311,81 @@ function errMsg(e) {
 async function q(promise) { const { data, error } = await promise; if (error) throw error; return data; }
 
 /* ---------- الموقع ---------- */
+const LOC_MAX_AGE = 10 * 60 * 1000;   // الموقع المحفوظ صالح 10 دقائق ثم يُحدَّث
+const LOC_GOOD_ACC = 25;               // نتوقف فور الوصول لدقة 25 متراً أو أفضل
+
+// يراقب GPS لبضع ثوانٍ ويأخذ أدق قراءة بدل أول قراءة (غالباً تكون من الشبكة وغير دقيقة)
+async function locateBest(maxWait = 12000) {
+  const G = isNative && Plug('Geolocation');
+  if (G) { try { const p = await G.checkPermissions(); if (p.location !== 'granted') await G.requestPermissions(); } catch {} }
+  else if (!navigator.geolocation) throw new Error('no geo');
+  return new Promise((resolve, reject) => {
+    let best = null, watchId = null, done = false;
+    const finish = () => {
+      if (done) return; done = true; clearTimeout(timer);
+      if (watchId != null) { if (G) G.clearWatch({ id: watchId }); else navigator.geolocation.clearWatch(watchId); }
+      best ? resolve(best) : reject(new Error('no fix'));
+    };
+    const onPos = (pos) => {
+      if (!pos || !pos.coords) return;
+      const c = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Math.round(pos.coords.accuracy || 9999), t: Date.now() };
+      if (!best || c.acc < best.acc) best = c;
+      if (best.acc <= LOC_GOOD_ACC) finish();
+    };
+    const opts = { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 };
+    const timer = setTimeout(finish, maxWait);
+    if (G) G.watchPosition(opts, (pos, err) => { if (!err) onPos(pos); }).then(id => { watchId = id; if (done) G.clearWatch({ id }); });
+    else watchId = navigator.geolocation.watchPosition(onPos, () => {}, opts);
+  });
+}
+
+// اسم الحي والمدينة من OpenStreetMap (بالعربية)
+async function placeName(c) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${c.lat}&lon=${c.lng}&zoom=16&accept-language=ar`);
+    const j = await r.json(), a = j.address || {};
+    const area = a.neighbourhood || a.suburb || a.quarter || a.residential || a.road || '';
+    const city = a.city || a.town || a.village || a.state || '';
+    return [area, city].filter(Boolean).filter((v, i, x) => x.indexOf(v) === i).join('، ');
+  } catch { return ''; }
+}
+
+async function saveCoords(c) {
+  S.coords = c; S.coordsReal = true;
+  await kv.set('coords', JSON.stringify(c));
+  placeName(c).then(n => { if (n) { S.coords.place = n; kv.set('coords', JSON.stringify(S.coords)); const el = $('#locName'); if (el) el.textContent = n; } });
+}
+
 async function getCoords(force = false) {
-  if (S.coords && !force) return S.coords;
-  if (!force) {
+  if (S.coords && S.coordsReal && !force && Date.now() - (S.coords.t || 0) < LOC_MAX_AGE) return S.coords;
+  if (!force && !S.coords) {
     const saved = await kv.get('coords');
-    if (saved) { try { S.coords = JSON.parse(saved); S.coordsReal = true; return S.coords; } catch {} }
+    if (saved) { try { S.coords = JSON.parse(saved); S.coordsReal = true; } catch {} }
+  }
+  // موقع محفوظ قديم: نستخدمه فوراً ونحدّثه في الخلفية
+  if (!force && S.coords && S.coordsReal) {
+    if (Date.now() - (S.coords.t || 0) >= LOC_MAX_AGE) refreshInBackground();
+    return S.coords;
   }
   try {
-    let pos;
-    const G = isNative && Plug('Geolocation');
-    if (G) {
-      try { await G.requestPermissions(); } catch {}
-      pos = await G.getCurrentPosition({ enableHighAccuracy: false, timeout: 12000 });
-    } else {
-      pos = await new Promise((res, rej) => navigator.geolocation
-        ? navigator.geolocation.getCurrentPosition(res, rej, { timeout: 12000, maximumAge: 300000 })
-        : rej(new Error('no geo')));
-    }
-    S.coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }; S.coordsReal = true;
-    await kv.set('coords', JSON.stringify(S.coords));
+    await saveCoords(await locateBest(force ? 15000 : 6000));
+    if (force) toast(`تم تحديد موقعك بدقة ${S.coords.acc} م`, 'success');
   } catch {
-    if (force) toast('تعذّر تحديد موقعك، فعّل خدمة الموقع', 'error');
-    S.coords = S.coords || DEFAULT_COORDS;
+    if (force) toast('تعذّر تحديد موقعك، فعّل خدمة الموقع (GPS)', 'error');
+    S.coords = S.coords || { ...DEFAULT_COORDS };
   }
   return S.coords;
+}
+
+let bgLocating = false;
+async function refreshInBackground() {
+  if (bgLocating) return; bgLocating = true;
+  try {
+    const old = S.coords, c = await locateBest(12000);
+    await saveCoords(c);
+    // إذا تحرّك المستخدم أكثر من 150 متراً، نعيد ترتيب الصيدليات
+    if (old && haversine(old, c) > 150 && ['home', 'map'].includes(parseHash().name)) render();
+  } catch {} finally { bgLocating = false; }
 }
 
 /* ---------- الجلسة ---------- */
@@ -533,7 +584,8 @@ Screens.home = async () => {
         <div class="row" style="justify-content:space-between">
           <button class="col" id="loc" style="gap:2px;text-align:right;color:#fff">
             <span style="font-size:13px;color:#CDE9E0">موقعك الحالي</span>
-            <span class="row" style="gap:6px;font-size:15.5px;font-weight:600">${icon('pin', 18, 2)}${S.coordsReal ? 'تحديد تلقائي' : 'بورتسودان (افتراضي)'}${icon('locate', 15, 2)}</span>
+            <span class="row" style="gap:6px;font-size:15.5px;font-weight:600">${icon('pin', 18, 2)}<span id="locName" class="ellipsis" style="max-width:230px">${S.coordsReal ? esc(S.coords.place || 'موقعك الحالي') : 'بورتسودان (افتراضي)'}</span>${icon('locate', 15, 2)}</span>
+            ${S.coordsReal && S.coords.acc ? `<span style="font-size:11.5px;color:#CDE9E0">الدقة ±${S.coords.acc} م · اضغط للتحديث</span>` : `<span style="font-size:11.5px;color:#CDE9E0">اضغط لتحديد موقعك</span>`}
           </button>
           <a class="icon-btn glass" href="#/chats" aria-label="المحادثات">${icon('chat', 22, 1.8)}</a>
         </div>
@@ -840,6 +892,7 @@ Screens.map = async ({ query }) => {
       tiles().addTo(map);
       onCleanup(() => map.remove());
       const me = L.marker([c.lat, c.lng], { icon: L.divIcon({ className: '', html: '<div class="me-dot"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }), interactive: false }).addTo(map);
+      const accCircle = L.circle([c.lat, c.lng], { radius: c.acc || 0, color: '#2563EB', weight: 1, fillColor: '#2563EB', fillOpacity: 0.08, interactive: false }).addTo(map);
       const layer = L.layerGroup().addTo(map);
       const card = $('#mcard');
       const showCard = (p) => {
@@ -864,7 +917,9 @@ Screens.map = async ({ query }) => {
       };
       document.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { filter = b.dataset.f; draw(); }));
       $('#me').addEventListener('click', async () => {
-        const n = await getCoords(true); me.setLatLng([n.lat, n.lng]); map.setView([n.lat, n.lng], 15);
+        toast('جارٍ تحديد موقعك بدقة…');
+        const n = await getCoords(true); me.setLatLng([n.lat, n.lng]); accCircle.setLatLng([n.lat, n.lng]).setRadius(n.acc || 0);
+        map.setView([n.lat, n.lng], 16);
       });
       draw();
     }
@@ -1092,7 +1147,7 @@ Screens.register = async () => {
         const upd = () => { const c = m.getCenter(); d.loc = { lat: c.lat, lng: c.lng }; };
         m.on('moveend', upd); upd();
         onCleanup(() => m.remove());
-        $('#r-me').addEventListener('click', async () => { const c = await getCoords(true); m.setView([c.lat, c.lng], 18); });
+        $('#r-me').addEventListener('click', async () => { toast('جارٍ تحديد موقعك بدقة…'); const c = await getCoords(true); m.setView([c.lat, c.lng], 18); });
       }
       if (step === 3) {
         $('#r-lic').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return;
