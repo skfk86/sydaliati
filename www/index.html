@@ -89,6 +89,7 @@ select.input{appearance:none}
 .b-low{color:var(--amber);background:var(--amber-soft)}
 .b-out{color:var(--red);background:var(--red-soft)}
 .b-rx{color:var(--blue);background:var(--blue-soft)}
+.b-premium{color:#7A4B00;background:#FDF1D6}
 .dot{width:7px;height:7px;border-radius:50%;background:#12A27E;display:inline-block}
 .b-closed .dot{background:var(--faint)}
 .section-head{display:flex;align-items:center;justify-content:space-between;padding:24px 20px 12px}
@@ -267,6 +268,9 @@ function icon(name, size = 22, sw = 1.9, extra = '') {
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${P[name] || ''}</svg>`;
 }
 const VERIFIED = `<svg width="17" height="17" viewBox="0 0 24 24" fill="#0B6E5B" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="صيدلية موثقة"><path d="M12 2.5 14.6 4.4 17.8 4.3 18.8 7.4 21.4 9.3 20.4 12.4 21.4 15.5 18.8 17.4 17.8 20.5 14.6 20.4 12 22.3 9.4 20.4 6.2 20.5 5.2 17.4 2.6 15.5 3.6 12.4 2.6 9.3 5.2 7.4 6.2 4.3 9.4 4.4z"/><path d="m8.5 12.5 2.3 2.3 4.7-4.8"/></svg>`;
+const PREMIUM = `<span class="badge b-premium" style="padding:2px 7px;font-size:11px">${'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 7 5 4 5-7 5 7 5-4-2 12H4z"/></svg>'}مميزة</span>`;
+const isPremium = (p) => p && p.plan === 'premium' && p.plan_until && new Date(p.plan_until) > new Date();
+const fmtDate = (ts) => new Date(ts).toLocaleDateString('ar', { day: 'numeric', month: 'long', year: 'numeric' });
 const STAR = (on = true, s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="${on ? '#F59E0B' : 'none'}" stroke="${on ? '#F59E0B' : '#C7D0CD'}" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>`;
 
 /* ---------- أدوات ---------- */
@@ -334,8 +338,8 @@ async function locateBest(maxWait = 12000) {
     };
     const opts = { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 };
     const timer = setTimeout(finish, maxWait);
-    if (G) G.watchPosition(opts, (pos, err) => { if (!err) onPos(pos); }).then(id => { watchId = id; if (done) G.clearWatch({ id }); });
-    else watchId = navigator.geolocation.watchPosition(onPos, () => {}, opts);
+    if (G) G.watchPosition(opts, (pos, err) => { if (err) { if (!best) finish(); return; } onPos(pos); }).then(id => { watchId = id; if (done) G.clearWatch({ id }); });
+    else watchId = navigator.geolocation.watchPosition(onPos, () => { if (!best) finish(); }, opts);
   });
 }
 
@@ -482,7 +486,7 @@ function pharmacyCard(p) {
   return `<a class="list-card" href="#/pharmacy/${p.id}">
     <span class="avatar" style="background:${bg};color:${fg}">${initial(p.name)}</span>
     <span class="grow col" style="gap:4px">
-      <span class="row" style="gap:6px;font-size:15px;font-weight:600"><span class="ellipsis">${esc(p.name)}</span>${p.verified ? VERIFIED : ''}</span>
+      <span class="row" style="gap:6px;font-size:15px;font-weight:600"><span class="ellipsis">${esc(p.name)}</span>${p.verified ? VERIFIED : ''}${p.is_premium ? PREMIUM : ''}</span>
       <span class="row small muted" style="gap:10px;flex-wrap:wrap">
         ${p.rating_count ? `<span class="row" style="gap:3px">${STAR()}${p.rating_avg}</span>` : ''}
         ${p.distance_m != null ? `<span>${fmtDist(p.distance_m)}</span>` : ''}
@@ -573,9 +577,9 @@ Screens.login = async ({ query }) => {
 Screens.home = async () => {
   const c = await getCoords();
   let list = [];
-  try { list = await q(sb.rpc('nearby_pharmacies', { lat: c.lat, lng: c.lng, radius_m: 15000, only_open: false })); }
+  try { list = await q(sb.rpc('nearby_pharmacies_v2', { lat: c.lat, lng: c.lng, radius_m: 15000, only_open: false })); }
   catch (e) { console.warn(e); }
-  list.sort((a, b) => (b.is_open - a.is_open) || (a.distance_m - b.distance_m));
+  list.sort((a, b) => (b.is_open - a.is_open) || (b.is_premium - a.is_premium) || (a.distance_m - b.distance_m));
   const openCount = list.filter(p => p.is_open).length;
   const hello = S.profile && S.profile.name ? `أهلاً ${esc(S.profile.name.split(' ')[0])}،` : 'ابحث عن دوائك';
   return {
@@ -727,7 +731,7 @@ Screens.pharmacy = async ({ id, query }) => {
           </div></div></div>
       <div style="margin-top:-22px;background:#fff;border-radius:24px 24px 0 0;position:relative;z-index:400;padding:20px 20px 0;display:flex;flex-direction:column;gap:16px">
         <div class="col" style="gap:6px">
-          <div class="row" style="gap:8px"><h1 style="font-size:22px">${esc(p.name)}</h1>${p.verified ? VERIFIED : ''}</div>
+          <div class="row" style="gap:8px"><h1 style="font-size:22px">${esc(p.name)}</h1>${p.verified ? VERIFIED : ''}${isPremium(p) ? PREMIUM : ''}</div>
           <div class="row small muted" style="gap:12px;flex-wrap:wrap">
             <span class="row bold" style="gap:5px;color:${p.is_open ? 'var(--brand)' : 'var(--muted)'}"><span class="dot" style="background:${p.is_open ? '#12A27E' : 'var(--faint)'}"></span>${p.is_open ? 'مفتوحة الآن' : 'مغلقة الآن'}</span>
             ${p.rating_count ? `<span class="row" style="gap:3px">${STAR()}${p.rating_avg} (${p.rating_count})</span>` : ''}
@@ -868,7 +872,7 @@ function pinIcon(open, big = false) {
 }
 Screens.map = async ({ query }) => {
   const c = await getCoords();
-  const all = await q(sb.rpc('nearby_pharmacies', { lat: c.lat, lng: c.lng, radius_m: 40000, only_open: false }));
+  const all = await q(sb.rpc('nearby_pharmacies_v2', { lat: c.lat, lng: c.lng, radius_m: 40000, only_open: false }));
   let filter = query.night ? 'night' : (query.open ? 'open' : 'all');
   return {
     html: `<div>
@@ -1203,10 +1207,17 @@ Screens.owner = async () => {
   await loadSession();
   const p = S.myPharmacy;
   if (!p) { location.replace('#/register'); return null; }
-  const [inv, chats] = await Promise.all([
+  const [inv, chats, pays] = await Promise.all([
     q(sb.from('inventory').select('product_id, status, price, updated_at, products(name, rx)').eq('pharmacy_id', p.id)),
-    q(sb.from('chats').select('unread_pharmacy').eq('pharmacy_id', p.id))
+    q(sb.from('chats').select('unread_pharmacy').eq('pharmacy_id', p.id)),
+    q(sb.from('payments').select('status, months, created_at, admin_note').eq('pharmacy_id', p.id).order('created_at', { ascending: false }).limit(1))
   ]);
+  const lastPay = pays[0];
+  const premiumCard = isPremium(p)
+    ? `<a href="#/upgrade" class="list-card" style="background:#FDF1D6;border-color:#F6DFA6">${icon('crown', 24, 1.9, 'style="color:#7A4B00"')}<span class="grow col" style="gap:2px"><b style="color:#7A4B00">صيدلية مميزة</b><span class="small" style="color:#7A4B00">تظهر أولاً في النتائج حتى ${fmtDate(p.plan_until)}</span></span><span class="small bold" style="color:#7A4B00">تجديد</span></a>`
+    : lastPay && lastPay.status === 'pending'
+      ? `<div class="list-card">${icon('clock', 22, 1.9, 'style="color:var(--amber)"')}<span class="grow col" style="gap:2px"><b>طلب الترقية قيد المراجعة</b><span class="small muted">أُرسل ${ago(lastPay.created_at)} · سنفعّل اشتراكك بعد التحقق من التحويل</span></span></div>`
+      : `<a href="#/upgrade" class="list-card" style="background:var(--ink);border-color:var(--ink);color:#fff">${icon('crown', 24, 1.9, 'style="color:#F6C453"')}<span class="grow col" style="gap:2px"><b>اجعل صيدليتك مميزة</b><span class="small" style="color:#B9CBC5">${lastPay && lastPay.status === 'rejected' ? 'رُفض طلبك السابق' + (lastPay.admin_note ? ': ' + esc(lastPay.admin_note) : '') + ' · حاول مجدداً' : 'اظهر أولاً في البحث والخريطة'}</span></span><span style="color:#F6C453">${icon('fwd', 20, 2)}</span></a>`;
   inv.sort((a, b) => a.products.name.localeCompare(b.products.name, 'ar'));
   const unread = chats.reduce((n, c) => n + c.unread_pharmacy, 0);
   const segBtn = (r, v, label) => `<button data-pid="${r.product_id}" data-st="${v}" class="${r.status === v ? 'on-' + v : ''}" aria-pressed="${r.status === v}">${label}</button>`;
@@ -1227,6 +1238,7 @@ Screens.owner = async () => {
           ${stat('pill', '#1D4ED8', inv.length, 'صنف في المخزون')}
           ${stat('star', '#B54708', p.rating_count ? p.rating_avg : '—', `${p.rating_count} تقييم`)}
         </div>
+        ${p.verified ? premiumCard : ''}
         <div class="row" style="justify-content:space-between;margin-top:4px"><h2 style="font-size:16px">المخزون والأسعار</h2>
           <button class="row small bold" id="addItem" style="color:var(--brand);min-height:44px;gap:4px">${icon('plus', 18, 2)}إضافة صنف</button></div>
         ${inv.length ? `<div class="card divider-list" style="padding:0 14px">${inv.map(r => `<div style="padding:12px 0" class="col">
@@ -1297,6 +1309,79 @@ function addItemSheet(pharmacyId, existing) {
   });
 }
 
+/* ===== ترقية إلى صيدلية مميزة (دفع بنكك يدوي) ===== */
+Screens.upgrade = async () => {
+  if (!requireLogin('/upgrade')) return null;
+  await loadSession();
+  const p = S.myPharmacy;
+  if (!p) { location.replace('#/register'); return null; }
+  const st = await q(sb.from('app_settings').select('*').eq('id', 1).single());
+  const plans = [[1, 'شهر واحد', st.price_1], [3, '3 أشهر', st.price_3], [12, 'سنة كاملة', st.price_12]].filter(x => x[2] != null);
+  const ready = st.bankak_account && plans.length;
+  let months = plans.length ? plans[Math.min(1, plans.length - 1)][0] : 1, receipt = null;
+  const perks = [['search', 'تظهر أولاً في نتائج البحث عن الأدوية'], ['map', 'تظهر أولاً في الخريطة والصيدليات القريبة'], ['crown', 'شارة "مميزة" بجانب اسم صيدليتك']];
+  return {
+    html: `<div class="screen no-nav" style="background:#fff">${topbar('صيدلية مميزة', { back: '/owner' })}
+      <div class="pad stack" style="padding-top:18px;gap:18px">
+        <div class="card" style="padding:16px;background:#FFFBF0;border-color:#F6DFA6;display:flex;flex-direction:column;gap:12px">
+          ${perks.map(([ic, t]) => `<div class="row" style="gap:12px"><span style="width:36px;height:36px;border-radius:11px;background:#FDF1D6;color:#7A4B00;display:flex;align-items:center;justify-content:center">${icon(ic, 18, 2)}</span><span style="font-size:14px;font-weight:500">${t}</span></div>`).join('')}
+        </div>
+        ${isPremium(p) ? `<div class="notice ok">${icon('check', 18, 2)}<span>اشتراكك فعّال حتى <b>${fmtDate(p.plan_until)}</b>. أي مدة جديدة تُضاف إليه.</span></div>` : ''}
+        ${!ready ? emptyState('clock', 'الاشتراكات غير متاحة بعد', 'نجهّز طرق الدفع حالياً، حاول لاحقاً.') : `
+        <div class="col" style="gap:10px"><h2 style="font-size:16px">1. اختر المدة</h2>
+          <div class="stack" style="gap:8px" role="radiogroup">${plans.map(([m, label, price]) => `<button class="list-card" data-m="${m}" role="radio" style="padding:14px 16px">
+            <span class="grow col" style="gap:2px"><b>${label}</b>${m > 1 && st.price_1 ? `<span class="small" style="color:var(--brand)">توفّر ${fmtPrice(st.price_1 * m - price)} ج.س</span>` : ''}</span>
+            <b style="font-size:16px">${fmtPrice(price)} <span class="small muted">ج.س</span></b></button>`).join('')}</div></div>
+        <div class="col" style="gap:10px"><h2 style="font-size:16px">2. حوّل المبلغ عبر بنكك</h2>
+          <div class="card" style="padding:16px;display:flex;flex-direction:column;gap:12px">
+            <div class="row" style="justify-content:space-between"><span class="small muted">المبلغ</span><b id="amt" style="font-size:18px"></b></div>
+            <div class="row" style="justify-content:space-between"><span class="small muted">رقم الحساب</span>
+              <button class="row bold" id="copyAcc" style="gap:6px;color:var(--brand);min-height:36px" dir="ltr">${esc(st.bankak_account)} ${icon('file', 16, 2)}</button></div>
+            ${st.bankak_name ? `<div class="row" style="justify-content:space-between"><span class="small muted">اسم صاحب الحساب</span><b>${esc(st.bankak_name)}</b></div>` : ''}
+            <div class="row" style="justify-content:space-between"><span class="small muted">في خانة التعليق اكتب</span><b>${esc(p.name)}</b></div>
+          </div></div>
+        <div class="col" style="gap:10px"><h2 style="font-size:16px">3. أرسل إثبات التحويل</h2>
+          <div class="field"><label for="ref">رقم العملية في بنكك</label><input class="input" id="ref" dir="ltr" inputmode="numeric" placeholder="مثال: 20261022123456" style="text-align:right" maxlength="60"></div>
+          <label class="drop" style="min-height:120px" id="rcBox">${icon('image', 26, 1.8)}<b>صورة إشعار التحويل</b><span class="small muted">لقطة شاشة من تطبيق بنكك</span><input type="file" id="rc" accept="image/*" aria-label="صورة الإشعار"></label>
+        </div>
+        <button class="btn btn-primary" id="payBtn">إرسال للمراجعة</button>
+        <p class="small muted" style="text-align:center;line-height:1.7">نراجع التحويل ونفعّل الاشتراك خلال 24 ساعة.</p>`}
+      </div></div>`,
+    mount() {
+      if (!ready) return;
+      const pick = (m) => {
+        months = m;
+        document.querySelectorAll('[data-m]').forEach(b => { const on = +b.dataset.m === m; b.style.borderColor = on ? 'var(--brand)' : 'var(--line)'; b.style.boxShadow = on ? '0 0 0 1.5px var(--brand)' : 'none'; b.setAttribute('aria-checked', on); });
+        $('#amt').textContent = fmtPrice(plans.find(x => x[0] === m)[2]) + ' ج.س';
+      };
+      document.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => pick(+b.dataset.m)));
+      pick(months);
+      $('#copyAcc').addEventListener('click', async () => { try { await navigator.clipboard.writeText(st.bankak_account); toast('نُسخ رقم الحساب', 'success'); } catch { toast(st.bankak_account); } });
+      $('#rc').addEventListener('change', (e) => {
+        receipt = e.target.files[0] || null;
+        if (receipt) { const box = $('#rcBox'); box.firstChild.remove(); box.querySelector('b').textContent = receipt.name; box.style.borderColor = 'var(--brand)'; }
+      });
+      $('#payBtn').addEventListener('click', async (e) => {
+        const ref = $('#ref').value.trim();
+        if (ref.length < 3) return toast('أدخل رقم العملية', 'error');
+        if (!receipt) return toast('أرفق صورة إشعار التحويل', 'error');
+        const btn = e.currentTarget; btn.disabled = true; btn.textContent = 'جارٍ الإرسال…';
+        try {
+          const path = `${S.user.id}/receipt-${Date.now()}.jpg`;
+          await q(sb.storage.from('receipts').upload(path, await compressImage(receipt, 1600, 0.85), { contentType: 'image/jpeg' }));
+          await q(sb.from('payments').insert({ pharmacy_id: p.id, months, txn_ref: ref, receipt_path: path }));
+          toast('وصلنا طلبك، سنراجعه قريباً', 'success');
+          location.replace('#/owner');
+        } catch (err) {
+          const m = (err && err.message) || '';
+          toast(m.includes('قيد المراجعة') ? 'لديك طلب قيد المراجعة بالفعل' : errMsg(err), 'error');
+          btn.disabled = false; btn.textContent = 'إرسال للمراجعة';
+        }
+      });
+    }
+  };
+};
+
 /* ===== لوحة المشرف ===== */
 Screens.admin = async ({ query }) => {
   if (!requireLogin('/admin')) return null;
@@ -1310,6 +1395,31 @@ Screens.admin = async ({ query }) => {
       <div class="row"><button class="btn btn-soft" style="height:44px;font-size:14px" data-lic="${esc(p.license_path || '')}">${icon('file', 18, 2)}عرض الترخيص</button>
         <button class="btn btn-primary" style="height:44px;font-size:14px" data-verify="${p.id}">${icon('check', 18, 2)}توثيق</button></div></div>`).join('') :
       emptyState('shield', 'لا توجد طلبات معلقة', 'كل الصيدليات المسجلة موثقة.');
+  } else if (tab === 'payments') {
+    const rows = await q(sb.from('payments').select('*, pharmacies(name, plan, plan_until)').order('created_at', { ascending: false }).limit(60));
+    const SL = { pending: ['قيد المراجعة', 'b-low'], approved: ['مقبول', 'b-open'], rejected: ['مرفوض', 'b-out'] };
+    content = rows.length ? rows.map(r => `<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:10px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start"><div class="col" style="gap:2px"><b>${esc(r.pharmacies ? r.pharmacies.name : '')}</b>
+        <span class="small muted">${r.months === 12 ? 'سنة' : r.months === 3 ? '3 أشهر' : 'شهر'} · <b style="color:var(--ink)">${fmtPrice(r.amount)} ج.س</b> · ${ago(r.created_at)}</span>
+        <span class="small muted">رقم العملية: <b dir="ltr" style="color:var(--ink)">${esc(r.txn_ref)}</b></span></div>
+        <span class="badge ${SL[r.status][1]}">${SL[r.status][0]}</span></div>
+      <div class="row"><button class="btn btn-soft" style="height:44px;font-size:14px" data-rc="${esc(r.receipt_path)}">${icon('image', 18, 2)}الإيصال</button>
+      ${r.status === 'pending' ? `<button class="btn" style="height:44px;font-size:14px;background:var(--red-soft);color:var(--red)" data-rej="${r.id}">رفض</button>
+        <button class="btn btn-primary" style="height:44px;font-size:14px" data-ok="${r.id}">${icon('check', 18, 2)}قبول</button>` : ''}</div></div>`).join('') :
+      emptyState('crown', 'لا توجد مدفوعات بعد', 'ستظهر هنا طلبات الترقية من الصيدليات.');
+  } else if (tab === 'settings') {
+    const st = await q(sb.from('app_settings').select('*').eq('id', 1).single());
+    content = `<form id="setForm" class="card stack" style="padding:16px;gap:14px">
+      <h2 style="font-size:16px">حساب بنكك لاستلام المدفوعات</h2>
+      <div class="field"><label for="s-acc">رقم الحساب</label><input class="input" id="s-acc" dir="ltr" inputmode="numeric" value="${esc(st.bankak_account || '')}" style="text-align:right"></div>
+      <div class="field"><label for="s-name">اسم صاحب الحساب</label><input class="input" id="s-name" value="${esc(st.bankak_name || '')}"></div>
+      <h2 style="font-size:16px;margin-top:6px">أسعار الاشتراك المميز (ج.س)</h2>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+        <div class="field"><label for="s-p1">شهر</label><input class="input" id="s-p1" inputmode="decimal" dir="ltr" value="${st.price_1 ?? ''}"></div>
+        <div class="field"><label for="s-p3">3 أشهر</label><input class="input" id="s-p3" inputmode="decimal" dir="ltr" value="${st.price_3 ?? ''}"></div>
+        <div class="field"><label for="s-p12">سنة</label><input class="input" id="s-p12" inputmode="decimal" dir="ltr" value="${st.price_12 ?? ''}"></div></div>
+      <p class="small muted" style="line-height:1.7">اترك خانة السعر فارغة لإخفاء تلك المدة.</p>
+      <button class="btn btn-primary" type="submit">حفظ</button></form>`;
   } else if (tab === 'reports') {
     const rows = await q(sb.from('reports').select('*, pharmacies(name)').order('created_at', { ascending: false }).limit(100));
     const T = { closed: 'مغلقة وتظهر مفتوحة', wrong_price: 'سعر خاطئ', out_of_stock: 'غير متوفر', other: 'أخرى' };
@@ -1323,7 +1433,7 @@ Screens.admin = async ({ query }) => {
       <label class="row" style="min-height:44px;font-size:14px"><input type="checkbox" id="p-rx" style="width:20px;height:20px;accent-color:var(--brand)">يحتاج وصفة طبية</label>
       <button class="btn btn-primary" type="submit">${icon('plus', 18, 2)}إضافة للكتالوج</button></form>`;
   }
-  const tabs = [['pending', 'طلبات التوثيق'], ['reports', 'البلاغات'], ['catalog', 'الكتالوج']];
+  const tabs = [['pending', 'التوثيق'], ['payments', 'المدفوعات'], ['reports', 'البلاغات'], ['catalog', 'الكتالوج'], ['settings', 'الإعدادات']];
   return {
     html: `<div class="screen no-nav">${topbar('لوحة المشرف', { back: '/account' })}
       <div class="pad" style="padding-top:12px"><div class="chips">${tabs.map(([k, v]) => `<a class="chip ${tab === k ? 'on' : ''}" href="#/admin?tab=${k}">${v}</a>`).join('')}</div></div>
@@ -1338,6 +1448,33 @@ Screens.admin = async ({ query }) => {
         try { await q(sb.from('pharmacies').update({ verified: true }).eq('id', b.dataset.verify)); toast('تم توثيق الصيدلية', 'success'); render(); }
         catch (e) { toast(errMsg(e), 'error'); }
       }));
+      document.querySelectorAll('[data-rc]').forEach(b => b.addEventListener('click', async () => {
+        try { const d = await q(sb.storage.from('receipts').createSignedUrl(b.dataset.rc, 600)); openExternal(d.signedUrl); }
+        catch (e) { toast(errMsg(e), 'error'); }
+      }));
+      document.querySelectorAll('[data-ok]').forEach(b => b.addEventListener('click', async () => {
+        b.disabled = true;
+        try { await q(sb.rpc('review_payment', { pay_id: +b.dataset.ok, approve: true })); toast('تم تفعيل الاشتراك المميز', 'success'); render(); }
+        catch (e) { b.disabled = false; toast(errMsg(e), 'error'); }
+      }));
+      document.querySelectorAll('[data-rej]').forEach(b => b.addEventListener('click', () => {
+        openSheet(`<h3>سبب الرفض</h3><div class="field" style="margin-bottom:16px"><label for="rjn">يظهر للصيدلي</label><input id="rjn" class="input" placeholder="مثال: لم يصل التحويل / المبلغ ناقص" maxlength="140"></div><button class="btn" id="rjGo" style="background:var(--red);color:#fff">رفض الطلب</button>`, () => {
+          $('#rjGo').addEventListener('click', async () => {
+            try { await q(sb.rpc('review_payment', { pay_id: +b.dataset.rej, approve: false, note: $('#rjn').value.trim() || null })); closeSheet(); toast('تم رفض الطلب'); render(); }
+            catch (e) { toast(errMsg(e), 'error'); }
+          });
+        });
+      }));
+      const sf = $('#setForm');
+      if (sf) sf.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const num = (id) => { const v = $(id).value.replace(/[,\s]/g, '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)); return v === '' ? null : Number(v); };
+        const row = { bankak_account: $('#s-acc').value.trim() || null, bankak_name: $('#s-name').value.trim() || null,
+          price_1: num('#s-p1'), price_3: num('#s-p3'), price_12: num('#s-p12'), updated_at: new Date().toISOString() };
+        if ([row.price_1, row.price_3, row.price_12].some(v => v != null && (isNaN(v) || v <= 0))) return toast('أدخل أسعاراً صحيحة', 'error');
+        try { await q(sb.from('app_settings').update(row).eq('id', 1)); toast('تم الحفظ', 'success'); }
+        catch (err) { toast(errMsg(err), 'error'); }
+      });
       document.querySelectorAll('[data-rdel]').forEach(b => b.addEventListener('click', async () => {
         try { await q(sb.from('reports').delete().eq('id', b.dataset.rdel)); render(); } catch (e) { toast(errMsg(e), 'error'); }
       }));
