@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#0B6E5B">
+<meta name="color-scheme" content="light dark">
 <title>صيدليتي السودان</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
@@ -16,7 +17,79 @@
   --blue:#1D4ED8; --blue-soft:#E6EEFD; --amber:#B54708; --amber-soft:#FEF0E1;
   --red:#B42318; --red-soft:#FDE8E8; --gold:#F59E0B;
   --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --line-strong:#D5DEDB; --inv:#10201C; --inv-muted:#B9CBC5; --closed:#5B6B67; --warn-ink:#7A3A06;
+  --gold-ink:#7A4B00; --gold-soft:#FDF1D6; --gold-bg:#FFFBF0; --gold-line:#F6DFA6;
+  --sk1:#E9EEEC; --sk2:#F3F6F5; --map-bg:#E4EEEA; --drop-line:#9FC9BB; --drop-bg:#F3FAF7;
+  --t0-bg:#E3F2EC; --t0-fg:#0B6E5B; --t1-bg:#E6EEFD; --t1-fg:#1D4ED8; --t2-bg:#FEF0E1; --t2-fg:#B54708;
+  --t3-bg:#F1E8FD; --t3-fg:#6D28D9; --t4-bg:#FDE8E8; --t4-fg:#B42318;
+  --shadow-sm:0 1px 2px rgba(16,32,28,.04),0 2px 10px rgba(16,32,28,.04);
+  --shadow-md:0 2px 6px rgba(16,32,28,.05),0 10px 28px rgba(16,32,28,.08);
+  --hero-ink:#CDE9E0;
+  color-scheme: light;
 }
+/* ===== الوضع الليلي: يتبع إعداد الهاتف ===== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand:#14916F; --brand-dark:#0B6E5B; --brand-soft:rgba(20,145,111,.18); --brand-mint:#7FD4BA;
+    --ink:#E6EEEB; --ink-2:#C2CFCA; --muted:#93A39E; --faint:#6F807A;
+    --line:#24312D; --line-2:#1E2926; --line-strong:#33433E; --field:#1C2724; --bg:#0D1412; --card:#151F1C;
+    --blue:#8AB0FF; --blue-soft:rgba(96,140,255,.16); --amber:#F6AD5F; --amber-soft:rgba(246,173,95,.14);
+    --red:#FF8A80; --red-soft:rgba(255,120,110,.14); --inv:#1F2D29; --inv-muted:#9FB4AD; --closed:#3A4A45; --warn-ink:#F6C79A;
+    --gold-ink:#F3CF7A; --gold-soft:rgba(243,207,122,.14); --gold-bg:rgba(243,207,122,.07); --gold-line:rgba(243,207,122,.28);
+    --sk1:#1A2522; --sk2:#22302C; --map-bg:#1A2522; --drop-line:#2E5A4D; --drop-bg:rgba(20,145,111,.07);
+    --t0-bg:rgba(20,145,111,.18); --t0-fg:#5FD3AE; --t1-bg:rgba(96,140,255,.16); --t1-fg:#9DBBFF; --t2-bg:rgba(246,173,95,.15); --t2-fg:#F6B36B;
+    --t3-bg:rgba(167,139,250,.16); --t3-fg:#C4B1FF; --t4-bg:rgba(255,120,110,.15); --t4-fg:#FF9C93;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow-md:0 8px 28px rgba(0,0,0,.45);
+    color-scheme: dark;
+  }
+  .hero, .topbar, .nav { border-color: var(--line); }
+  .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.88) saturate(.6); }
+  html .notice.ok { color: #9BE3C9; } html .notice.info { color: #B9CCFF; }
+  html .bubble.me { background: #127F62; }
+  html .hero { background: #0C5E4D; }
+  html .toggle-card[aria-pressed="true"] { background: #0F7A60 !important; }
+}
+
+/* ===== لمسات احترافية ===== */
+html { scroll-behavior: smooth; }
+body { font-feature-settings: "kern"; text-rendering: optimizeLegibility; }
+.screen { animation: enter .32s cubic-bezier(.2,.8,.2,1); }
+@keyframes enter { from { opacity: 0; transform: translateY(8px); } }
+.card, .list-card, .cat span, .search-float { box-shadow: var(--shadow-sm); }
+.search-float { box-shadow: var(--shadow-md); }
+.list-card, .btn, .chip, .cat, .icon-btn, .toggle-card, .seg button, .nav a { transition: transform .15s ease, background-color .2s, box-shadow .2s, opacity .2s; }
+.list-card:active, .btn:active, .cat:active, .toggle-card:active { transform: scale(.98); }
+.chip:active, .icon-btn:active, .nav a:active { transform: scale(.94); }
+.btn-primary { box-shadow: 0 6px 16px rgba(11,110,91,.22); }
+.hero { position: relative; overflow: hidden; }
+.hero::before, .hero::after { content: ""; position: absolute; border-radius: 50%; background: rgba(255,255,255,.06); pointer-events: none; }
+.hero::before { width: 240px; height: 240px; top: -90px; left: -70px; }
+.hero::after { width: 140px; height: 140px; bottom: -50px; left: 120px; background: rgba(255,255,255,.04); }
+.hero > * { position: relative; }
+.hero h1 { letter-spacing: -.2px; }
+.section-head h2, .page-title h1 { letter-spacing: -.2px; }
+.nav { box-shadow: 0 -4px 20px rgba(16,32,28,.05); backdrop-filter: saturate(1.4) blur(10px); }
+.nav a.on::before { content: ""; position: absolute; top: 2px; width: 48px; height: 32px; border-radius: 12px; background: var(--brand-soft); z-index: -1; }
+.nav a { z-index: 0; }
+.nav a svg { margin-top: 4px; }
+.avatar { box-shadow: inset 0 0 0 1px rgba(0,0,0,.02); }
+.badge { letter-spacing: .1px; }
+.sheet { box-shadow: 0 -10px 40px rgba(0,0,0,.18); }
+.empty .ic { box-shadow: 0 8px 24px rgba(11,110,91,.12); }
+::selection { background: var(--brand-soft); }
+
+/* ===== شاشة البداية داخل التطبيق ===== */
+#boot { position: fixed; inset: 0; z-index: 200; background: #0B6E5B; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: #fff; transition: opacity .45s ease, visibility .45s; }
+#boot.hide { opacity: 0; visibility: hidden; }
+#boot .logo { width: 96px; height: 96px; border-radius: 28px; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 18px 40px rgba(0,0,0,.22); animation: pop .6s cubic-bezier(.2,1.4,.4,1); }
+#boot .name { font-size: 24px; font-weight: 700; animation: rise .6s .1s both; }
+#boot .tag { font-size: 14px; color: #CDE9E0; animation: rise .6s .2s both; }
+#boot .bar { width: 54px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.2); overflow: hidden; margin-top: 18px; }
+#boot .bar i { display: block; width: 40%; height: 100%; background: #fff; border-radius: 4px; animation: slide 1s ease-in-out infinite; }
+@keyframes pop { from { transform: scale(.6); opacity: 0; } }
+@keyframes rise { from { transform: translateY(10px); opacity: 0; } }
+@keyframes slide { 0% { transform: translateX(160%); } 100% { transform: translateX(-160%); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);overflow-x:hidden;max-width:100%}
 input,select,textarea{min-width:0;max-width:100%}
@@ -51,17 +124,17 @@ h1,h2,h3,p{margin:0}
 /* buttons */
 .icon-btn{width:44px;height:44px;border-radius:13px;background:var(--field);display:inline-flex;align-items:center;justify-content:center;color:var(--ink)}
 .icon-btn.glass{background:rgba(255,255,255,.14);color:#fff}
-.icon-btn.white{background:#fff;box-shadow:0 2px 8px rgba(16,32,28,.10)}
+.icon-btn.white{background:var(--card);box-shadow:0 2px 8px rgba(16,32,28,.10)}
 .icon-btn.soft{background:var(--brand-soft);color:var(--brand)}
 .btn{height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15.5px;font-weight:600;width:100%}
 .btn-primary{background:var(--brand);color:#fff}
 .btn-primary:active{background:var(--brand-dark)}
 .btn-soft{background:var(--brand-soft);color:var(--brand)}
-.btn-dark{background:var(--ink);color:#fff}
+.btn-dark{background:var(--inv);color:#fff}
 .btn-ghost{background:transparent;color:var(--muted);height:44px}
 .btn-danger{background:transparent;color:var(--red);height:44px}
 .btn[disabled]{opacity:.55;pointer-events:none}
-.chip{height:36px;padding:0 14px;border-radius:999px;background:#fff;border:1px solid #D5DEDB;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.chip{height:36px;padding:0 14px;border-radius:999px;background:var(--card);border:1px solid var(--line-strong);font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .chip.on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
 .chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
@@ -69,13 +142,13 @@ h1,h2,h3,p{margin:0}
 /* fields */
 .field{display:flex;flex-direction:column;gap:7px}
 .field label{font-size:13px;font-weight:600;color:var(--ink-2)}
-.input{height:52px;border:1.5px solid #D5DEDB;border-radius:14px;padding:0 14px;background:#fff;outline:none;width:100%}
+.input{height:52px;border:1.5px solid var(--line-strong);border-radius:14px;padding:0 14px;background:var(--card);outline:none;width:100%}
 .input:focus{border-color:var(--brand)}
 textarea.input{height:auto;min-height:90px;padding:12px 14px;resize:vertical}
 select.input{appearance:none}
 .searchbox{display:flex;align-items:center;gap:8px;height:46px;border-radius:14px;background:var(--field);padding:0 12px;color:var(--muted)}
 .searchbox input{all:unset;flex:1;width:100%;min-width:0;color:var(--ink);font-size:15px}
-.search-float{margin:-36px 20px 0;background:#fff;border-radius:18px;box-shadow:0 8px 24px rgba(16,32,28,.10);padding:6px 6px 6px 8px;display:flex;align-items:center;gap:8px;position:relative;z-index:2}
+.search-float{margin:-36px 20px 0;background:var(--card);border-radius:18px;box-shadow:0 8px 24px rgba(16,32,28,.10);padding:6px 6px 6px 8px;display:flex;align-items:center;gap:8px;position:relative;z-index:2}
 .search-float form{display:flex;align-items:center;gap:10px;flex:1;padding-right:12px;color:var(--muted)}
 .search-float input{all:unset;flex:1;width:100%;min-width:0;height:44px;color:var(--ink);font-size:15px}
 
@@ -89,7 +162,7 @@ select.input{appearance:none}
 .b-low{color:var(--amber);background:var(--amber-soft)}
 .b-out{color:var(--red);background:var(--red-soft)}
 .b-rx{color:var(--blue);background:var(--blue-soft)}
-.b-premium{color:#7A4B00;background:#FDF1D6}
+.b-premium{color:var(--gold-ink);background:var(--gold-soft)}
 .dot{width:7px;height:7px;border-radius:50%;background:#12A27E;display:inline-block}
 .b-closed .dot{background:var(--faint)}
 .section-head{display:flex;align-items:center;justify-content:space-between;padding:24px 20px 12px}
@@ -97,7 +170,7 @@ select.input{appearance:none}
 .stack{display:flex;flex-direction:column;gap:12px}
 .cats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:22px 20px 0}
 .cat{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12.5px;font-weight:500;color:var(--ink)}
-.cat span{width:60px;height:60px;border-radius:18px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.cat span{width:60px;height:60px;border-radius:18px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
 .empty{padding:36px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--muted)}
 .empty .ic{width:64px;height:64px;border-radius:20px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center}
 .empty h3{color:var(--ink);font-size:16px}
@@ -105,23 +178,23 @@ select.input{appearance:none}
 .divider-list > *:last-child{border-bottom:0}
 
 /* nav */
-.nav{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;background:#fff;border-top:1px solid var(--line);padding:8px 8px calc(10px + var(--safe-bottom));display:grid;z-index:30}
+.nav{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;background:var(--card);border-top:1px solid var(--line);padding:8px 8px calc(10px + var(--safe-bottom));display:grid;z-index:30}
 .nav a{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11.5px;font-weight:500;color:var(--muted);padding:6px 0;position:relative}
 .nav a.on{color:var(--brand);font-weight:600}
 .nav .pill{position:absolute;top:2px;left:calc(50% - 22px);min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
 
 /* skeleton */
-.sk{background:linear-gradient(90deg,#E9EEEC 25%,#F3F6F5 50%,#E9EEEC 75%);background-size:200% 100%;animation:sk 1.2s infinite;border-radius:14px}
+.sk{background:linear-gradient(90deg,var(--sk1) 25%,var(--sk2) 50%,var(--sk1) 75%);background-size:200% 100%;animation:sk 1.2s infinite;border-radius:14px}
 @keyframes sk{to{background-position:-200% 0}}
 
 /* toast & sheet */
-#toast{position:fixed;left:50%;bottom:calc(96px + var(--safe-bottom));transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 18px;border-radius:14px;font-size:14px;opacity:0;transition:.25s;z-index:100;pointer-events:none;max-width:88vw;text-align:center}
+#toast{position:fixed;left:50%;bottom:calc(96px + var(--safe-bottom));transform:translateX(-50%) translateY(20px);background:var(--inv);color:#fff;padding:12px 18px;border-radius:14px;font-size:14px;opacity:0;transition:.25s;z-index:100;pointer-events:none;max-width:88vw;text-align:center}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #toast.error{background:var(--red)}
 #toast.success{background:var(--brand)}
 .overlay{position:fixed;inset:0;background:rgba(16,32,28,.45);z-index:60;display:flex;align-items:flex-end;justify-content:center;animation:fade .2s}
-.sheet{background:#fff;width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:10px 20px calc(22px + var(--safe-bottom));max-height:88vh;overflow:auto;animation:up .25s}
-.sheet .grab{width:40px;height:5px;border-radius:999px;background:#D5DEDB;margin:0 auto 14px}
+.sheet{background:var(--card);width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:10px 20px calc(22px + var(--safe-bottom));max-height:88vh;overflow:auto;animation:up .25s}
+.sheet .grab{width:40px;height:5px;border-radius:999px;background:var(--line-strong);margin:0 auto 14px}
 .sheet h3{font-size:18px;font-weight:700;margin-bottom:14px}
 @keyframes up{from{transform:translateY(40px);opacity:.4}}
 @keyframes fade{from{opacity:0}}
@@ -133,25 +206,25 @@ select.input{appearance:none}
 .pin{width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center}
 .pin svg{transform:rotate(45deg)}
 .me-dot{width:20px;height:20px;border-radius:50%;background:#2563EB;border:4px solid #fff;box-shadow:0 0 0 9px rgba(37,99,235,.18)}
-.leaflet-container{font-family:inherit;background:#E4EEEA}
+.leaflet-container{font-family:inherit;background:var(--map-bg)}
 
 /* chat */
 .msgs{display:flex;flex-direction:column;gap:6px;padding:16px}
 .bubble{max-width:78%;padding:10px 14px;font-size:14.5px;line-height:1.6;white-space:pre-wrap;word-wrap:break-word}
 .bubble.me{align-self:flex-start;background:var(--brand);color:#fff;border-radius:18px 18px 4px 18px}
-.bubble.them{align-self:flex-end;background:#fff;border:1px solid var(--line);border-radius:18px 18px 18px 4px}
+.bubble.them{align-self:flex-end;background:var(--card);border:1px solid var(--line);border-radius:18px 18px 18px 4px}
 .bubble img{display:block;max-width:220px;max-height:260px;border-radius:12px;margin:-4px -8px}
 .stamp{font-size:11px;color:var(--muted);margin-bottom:6px}
 .stamp.me{align-self:flex-start}.stamp.them{align-self:flex-end}
-.composer{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;background:#fff;border-top:1px solid var(--line);padding:10px 12px calc(12px + var(--safe-bottom));display:flex;align-items:center;gap:8px;z-index:30}
+.composer{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(12px + var(--safe-bottom));display:flex;align-items:center;gap:8px;z-index:30}
 .composer input[type=text]{flex:1;height:44px;border-radius:13px;background:var(--field);border:0;padding:0 14px;outline:none}
 
 /* segmented */
 .seg{display:flex;background:var(--field);border-radius:10px;padding:3px;gap:2px}
 .seg button{height:32px;padding:0 10px;border-radius:8px;font-size:12px;font-weight:600;color:var(--muted)}
-.seg button.on-ok{background:#fff;color:var(--brand)}
-.seg button.on-low{background:#fff;color:var(--amber)}
-.seg button.on-out{background:#fff;color:var(--red)}
+.seg button.on-ok{background:var(--card);color:var(--brand)}
+.seg button.on-low{background:var(--card);color:var(--amber)}
+.seg button.on-out{background:var(--card);color:var(--red)}
 
 .toggle-card{border-radius:22px;padding:18px;display:flex;align-items:center;gap:14px;color:#fff;width:100%;text-align:right}
 .switch{width:64px;height:36px;border-radius:999px;background:rgba(255,255,255,.25);position:relative}
@@ -160,7 +233,7 @@ select.input{appearance:none}
 .steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .steps span{height:5px;border-radius:999px;background:var(--line)}
 .steps span.on{background:var(--brand)}
-.drop{border:2px dashed #9FC9BB;border-radius:18px;background:#F3FAF7;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--brand);text-align:center;padding:16px;position:relative}
+.drop{border:2px dashed var(--drop-line);border-radius:18px;background:var(--drop-bg);min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--brand);text-align:center;padding:16px;position:relative}
 .drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
 .tabs{display:flex;gap:22px;border-bottom:1px solid var(--line)}
 .tabs button{padding:10px 0;font-size:14px;font-weight:500;color:var(--muted);border-bottom:2.5px solid transparent}
@@ -169,12 +242,17 @@ select.input{appearance:none}
 .star-pick{display:flex;gap:6px;justify-content:center;direction:ltr}
 .star-pick button{width:44px;height:44px;display:flex;align-items:center;justify-content:center}
 .notice{border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.7;display:flex;gap:10px;align-items:flex-start}
-.notice.warn{background:var(--amber-soft);color:#7A3A06}
+.notice.warn{background:var(--amber-soft);color:var(--warn-ink)}
 .notice.info{background:var(--blue-soft);color:#1E3A8A}
 .notice.ok{background:var(--brand-soft);color:var(--brand-dark)}
 </style>
 </head>
 <body>
+<div id="boot" aria-hidden="true">
+  <div class="logo"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#0B6E5B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M12 6.5v6M9 9.5h6"/></svg></div>
+  <div class="name">صيدليتي السودان</div><div class="tag">دواؤك أقرب مما تتوقع</div>
+  <div class="bar"><i></i></div>
+</div>
 <div id="app"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 
@@ -272,7 +350,7 @@ const VERIFIED = `<svg width="17" height="17" viewBox="0 0 24 24" fill="#0B6E5B"
 const PREMIUM = `<span class="badge b-premium" style="padding:2px 7px;font-size:11px">${'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 7 5 4 5-7 5 7 5-4-2 12H4z"/></svg>'}مميزة</span>`;
 const isPremium = (p) => p && p.plan === 'premium' && p.plan_until && new Date(p.plan_until) > new Date();
 const fmtDate = (ts) => new Date(ts).toLocaleDateString('ar', { day: 'numeric', month: 'long', year: 'numeric' });
-const STAR = (on = true, s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="${on ? '#F59E0B' : 'none'}" stroke="${on ? '#F59E0B' : '#C7D0CD'}" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>`;
+const STAR = (on = true, s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="${on ? '#F59E0B' : 'none'}" stroke="${on ? '#F59E0B' : 'var(--line-strong)'}" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>`;
 
 /* ---------- أدوات ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -289,7 +367,7 @@ function ago(ts) {
 }
 const clock = (ts) => new Date(ts).toLocaleTimeString('ar', { hour: 'numeric', minute: '2-digit' });
 const initial = (name) => esc((name || '؟').replace(/^صيدلية\s+(ال)?/, '').trim().charAt(0) || '؟');
-const TINTS = [['#E3F2EC','#0B6E5B'],['#E6EEFD','#1D4ED8'],['#FEF0E1','#B54708'],['#F1E8FD','#6D28D9'],['#FDE8E8','#B42318']];
+const TINTS = [0, 1, 2, 3, 4].map(i => [`var(--t${i}-bg)`, `var(--t${i}-fg)`]);
 const tint = (id) => { let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return TINTS[h % TINTS.length]; };
 const STATUS = { ok: ['متوفر','b-open'], low: ['كمية محدودة','b-low'], out: ['نفد','b-out'] };
 
@@ -522,10 +600,12 @@ async function render() {
     if (seq !== renderSeq || !out) return;
     app.innerHTML = out.html;
     window.scrollTo(0, 0);
+    hideBoot();
     if (out.mount) out.mount();
   } catch (e) {
     console.error(e);
     if (seq !== renderSeq) return;
+    hideBoot();
     app.innerHTML = `<div class="screen no-nav">${topbar('خطأ')}${emptyState('wifiOff', 'تعذّر تحميل الصفحة', errMsg(e), `<button class="btn btn-primary" style="max-width:220px" onclick="render()">إعادة المحاولة</button>`)}</div>`;
   }
 }
@@ -541,6 +621,7 @@ function topbar(title, opts = {}) {
     `<button class="icon-btn" aria-label="رجوع" onclick="goBack('${opts.back || '/home'}')">${icon('back')}</button>`;
   return `<header class="topbar">${back}<div class="grow"><h1 class="ellipsis">${title}</h1>${opts.sub ? `<div class="small muted">${opts.sub}</div>` : ''}</div>${opts.right || ''}</header>`;
 }
+function hideBoot() { const b = $('#boot'); if (b && !b.classList.contains('hide')) { b.classList.add('hide'); setTimeout(() => b.remove(), 600); } }
 function goBack(fallback) { if (history.length > 1) history.back(); else go(fallback); }
 function emptyState(ic, title, text, action = '') {
   return `<div class="empty"><div class="ic">${icon(ic, 30, 1.7)}</div><h3>${title}</h3><p class="small" style="line-height:1.7">${text}</p>${action}</div>`;
@@ -588,12 +669,12 @@ Screens.login = async ({ query }) => {
   const signup = query.mode === 'signup';
   const next = query.next || '/home';
   return {
-    html: `<div class="screen no-nav" style="background:#fff">
+    html: `<div class="screen no-nav" style="background:var(--card)">
       <div style="background:var(--brand);color:#fff;border-radius:0 0 36px 36px;padding:calc(36px + var(--safe-top)) 24px 34px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center">
-        <span style="width:80px;height:80px;border-radius:24px;background:#fff;color:var(--brand);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px rgba(0,0,0,.18)">
+        <span style="width:80px;height:80px;border-radius:24px;background:#fff;color:#0B6E5B;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px rgba(0,0,0,.18)">
           <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M12 6.5v6M9 9.5h6"/></svg></span>
         <span style="font-size:24px;font-weight:700">صيدليتي السودان</span>
-        <span style="font-size:14px;color:#CDE9E0">دواؤك أقرب مما تتوقع</span>
+        <span style="font-size:14px;color:var(--hero-ink)">دواؤك أقرب مما تتوقع</span>
       </div>
       <form id="auth" class="pad stack" style="padding-top:28px;gap:16px" novalidate>
         <div class="col" style="gap:4px"><h1 style="font-size:21px">${signup ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}</h1>
@@ -666,9 +747,9 @@ Screens.home = async () => {
       <div class="hero">
         <div class="row" style="justify-content:space-between">
           <button class="col" id="loc" style="gap:2px;text-align:right;color:#fff">
-            <span style="font-size:13px;color:#CDE9E0">موقعك الحالي</span>
+            <span style="font-size:13px;color:var(--hero-ink)">موقعك الحالي</span>
             <span class="row" style="gap:6px;font-size:15.5px;font-weight:600">${icon('pin', 18, 2)}<span id="locName" class="ellipsis" style="max-width:230px">${S.coordsReal ? esc(S.coords.place || 'موقعك الحالي') : 'الموقع غير محدد'}</span>${icon('locate', 15, 2)}</span>
-            ${S.coordsReal && S.coords.manual ? `<span style="font-size:11.5px;color:#CDE9E0">مدينة مختارة يدوياً · اضغط للتغيير</span>` : S.coordsReal && S.coords.acc ? `<span style="font-size:11.5px;color:#CDE9E0">الدقة ±${S.coords.acc} م · اضغط للتحديث</span>` : `<span style="font-size:11.5px;color:#CDE9E0">اضغط لتحديد موقعك</span>`}
+            ${S.coordsReal && S.coords.manual ? `<span style="font-size:11.5px;color:var(--hero-ink)">مدينة مختارة يدوياً · اضغط للتغيير</span>` : S.coordsReal && S.coords.acc ? `<span style="font-size:11.5px;color:var(--hero-ink)">الدقة ±${S.coords.acc} م · اضغط للتحديث</span>` : `<span style="font-size:11.5px;color:var(--hero-ink)">اضغط لتحديد موقعك</span>`}
           </button>
           <a class="icon-btn glass" href="#/chats" aria-label="المحادثات">${icon('chat', 22, 1.8)}</a>
         </div>
@@ -803,7 +884,7 @@ Screens.pharmacy = async ({ id, query }) => {
   const geoHref = loc ? (isNative ? `geo:${loc.lat},${loc.lng}?q=${loc.lat},${loc.lng}(${encodeURIComponent(p.name)})` : `https://www.google.com/maps/dir/?api=1&destination=${loc.lat},${loc.lng}`) : '#';
   let isFav = fav.length > 0;
   return {
-    html: `<div class="screen no-nav" style="background:#fff">
+    html: `<div class="screen no-nav" style="background:var(--card)">
       <div style="height:210px;position:relative">
         <div id="pmap" style="position:absolute;inset:0"></div>
         <div style="position:absolute;top:calc(14px + var(--safe-top));left:16px;right:16px;display:flex;justify-content:space-between;z-index:500">
@@ -812,7 +893,7 @@ Screens.pharmacy = async ({ id, query }) => {
             <button class="icon-btn white" id="share" aria-label="مشاركة">${icon('upload', 20, 1.8)}</button>
             <button class="icon-btn white" id="fav" aria-label="المفضلة" style="color:${isFav ? '#B42318' : 'var(--ink)'}">${icon('heart', 20, 1.8, isFav ? 'fill="#B42318"' : '')}</button>
           </div></div></div>
-      <div style="margin-top:-22px;background:#fff;border-radius:24px 24px 0 0;position:relative;z-index:400;padding:20px 20px 0;display:flex;flex-direction:column;gap:16px">
+      <div style="margin-top:-22px;background:var(--card);border-radius:24px 24px 0 0;position:relative;z-index:400;padding:20px 20px 0;display:flex;flex-direction:column;gap:16px">
         <div class="col" style="gap:6px">
           <div class="row" style="gap:8px"><h1 style="font-size:22px">${esc(p.name)}</h1>${p.verified ? VERIFIED : ''}${isPremium(p) ? PREMIUM : ''}</div>
           <div class="row small muted" style="gap:12px;flex-wrap:wrap">
@@ -964,7 +1045,7 @@ Screens.map = async ({ query }) => {
       <div class="map-top">
         <div class="row">
           <button class="icon-btn white" aria-label="رجوع" onclick="goBack('/home')" style="width:48px;height:48px">${icon('back')}</button>
-          <a href="#/search" class="searchbox grow" style="background:#fff;height:48px;box-shadow:0 4px 14px rgba(16,32,28,.12)">${icon('search', 18, 2)}<span class="muted">ابحث عن دواء</span></a>
+          <a href="#/search" class="searchbox grow" style="background:var(--card);height:48px;box-shadow:0 4px 14px rgba(16,32,28,.12)">${icon('search', 18, 2)}<span class="muted">ابحث عن دواء</span></a>
         </div>
         <div class="chips">
           <button class="chip" data-f="all" style="box-shadow:0 2px 8px rgba(16,32,28,.1)">الكل (${all.length})</button>
@@ -1071,7 +1152,7 @@ Screens.chat = async ({ id }) => {
   const dayLabel = (d) => { const t = new Date(); const y = new Date(Date.now() - 864e5); const s = new Date(d).toDateString();
     return s === t.toDateString() ? 'اليوم' : s === y.toDateString() ? 'أمس' : new Date(d).toLocaleDateString('ar', { day: 'numeric', month: 'long' }); };
   let lastDay = '';
-  const withDays = (m) => { const dl = dayLabel(m.created_at); const sep = dl !== lastDay ? `<span style="align-self:center;font-size:11.5px;color:var(--muted);background:#E9EEEC;padding:4px 12px;border-radius:999px;margin:8px 0">${dl}</span>` : ''; lastDay = dl; return sep + bubble(m); };
+  const withDays = (m) => { const dl = dayLabel(m.created_at); const sep = dl !== lastDay ? `<span style="align-self:center;font-size:11.5px;color:var(--muted);background:var(--field);padding:4px 12px;border-radius:999px;margin:8px 0">${dl}</span>` : ''; lastDay = dl; return sep + bubble(m); };
   return {
     html: `<div class="screen no-nav" style="padding-bottom:calc(84px + var(--safe-bottom))">
       ${topbar(iAmPharmacy ? 'عميل' : esc(ph.name), { back: '/chats',
@@ -1152,20 +1233,20 @@ Screens.account = async () => {
         <div class="list-card"><span class="avatar" style="border-radius:50%;width:58px;height:58px;background:var(--brand);color:#fff;font-size:22px">${esc(name.charAt(0))}</span>
           <span class="grow col" style="gap:2px"><span style="font-size:17px;font-weight:700">${esc(name)}</span><span class="small muted ellipsis" dir="ltr" style="text-align:right">${esc(S.user.email)}</span></span>
           <button class="icon-btn" id="editName" aria-label="تعديل الاسم">${icon('edit', 18, 1.8)}</button></div>
-        ${S.myPharmacy ? `<a href="#/owner" class="list-card" style="background:var(--ink);border-color:var(--ink);color:#fff">
+        ${S.myPharmacy ? `<a href="#/owner" class="list-card" style="background:var(--inv);border-color:var(--inv);color:#fff">
             <span class="avatar" style="width:48px;height:48px;border-radius:14px;background:rgba(127,212,186,.16);color:var(--brand-mint)">${icon('store', 24, 1.8)}</span>
-            <span class="grow col" style="gap:3px"><span class="bold">${esc(S.myPharmacy.name)}</span><span class="small" style="color:#B9CBC5">${S.myPharmacy.verified ? 'لوحة التحكم بصيدليتك' : 'قيد المراجعة · لوحة التحكم'}</span></span>
+            <span class="grow col" style="gap:3px"><span class="bold">${esc(S.myPharmacy.name)}</span><span class="small" style="color:var(--inv-muted)">${S.myPharmacy.verified ? 'لوحة التحكم بصيدليتك' : 'قيد المراجعة · لوحة التحكم'}</span></span>
             <span style="color:var(--brand-mint)">${icon('fwd', 20, 2)}</span></a>` :
-          `<a href="#/register" class="list-card" style="background:var(--ink);border-color:var(--ink);color:#fff">
+          `<a href="#/register" class="list-card" style="background:var(--inv);border-color:var(--inv);color:#fff">
             <span class="avatar" style="width:48px;height:48px;border-radius:14px;background:rgba(127,212,186,.16);color:var(--brand-mint)">${icon('store', 24, 1.8)}</span>
-            <span class="grow col" style="gap:3px"><span class="bold">هل تملك صيدلية؟</span><span class="small" style="color:#B9CBC5">سجّلها مجاناً ووصل لعملاء أكثر</span></span>
+            <span class="grow col" style="gap:3px"><span class="bold">هل تملك صيدلية؟</span><span class="small" style="color:var(--inv-muted)">سجّلها مجاناً ووصل لعملاء أكثر</span></span>
             <span style="color:var(--brand-mint)">${icon('fwd', 20, 2)}</span></a>`}
         ${S.profile && S.profile.is_admin ? `<a href="#/admin" class="list-card">${icon('shield', 22, 1.9)}<span class="grow bold">لوحة المشرف</span><span style="color:var(--faint)">${icon('fwd', 18, 2)}</span></a>` : ''}
         <div><h2 style="font-size:16px;margin:4px 2px 10px">الصيدليات المفضلة</h2>
           ${favs.length ? `<div class="stack">${favs.filter(f => f.pharmacies).map(f => pharmacyCard(f.pharmacies)).join('')}</div>` :
           `<div class="card small muted" style="padding:16px;text-align:center;line-height:1.7">اضغط ${icon('heart', 14, 2)} في صفحة أي صيدلية لحفظها هنا</div>`}</div>
         <div class="card" style="padding:0 16px">
-          ${row('pin', 'الموقع', S.coordsReal ? esc(S.coords.place || (S.coords.manual ? 'يدوي' : 'تلقائي')) : 'غير محدد', '#/home', ['#E3F2EC', '#0B6E5B'])}
+          ${row('pin', 'الموقع', S.coordsReal ? esc(S.coords.place || (S.coords.manual ? 'يدوي' : 'تلقائي')) : 'غير محدد', '#/home', ['var(--t0-bg)', 'var(--t0-fg)'])}
         </div>
         <p class="small muted" style="text-align:center">الإصدار ${APP_BUILD}</p>
         <button class="btn btn-danger" id="out">${icon('logout', 18, 2)}تسجيل الخروج</button>
@@ -1206,20 +1287,20 @@ Screens.register = async () => {
     <div style="height:280px;border-radius:18px;overflow:hidden;position:relative">
       <div id="rmap" style="position:absolute;inset:0"></div>
       <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:500;pointer-events:none"><div class="pin" style="width:44px;height:44px;background:var(--brand)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"><path d="M12 6v12M6 12h12"/></svg></div></div>
-      <span style="position:absolute;bottom:10px;right:10px;left:10px;background:#fff;border-radius:12px;padding:9px 12px;font-size:12.5px;color:var(--ink-2);z-index:500">حرّك الخريطة حتى يكون الدبوس على مدخل الصيدلية</span>
+      <span style="position:absolute;bottom:10px;right:10px;left:10px;background:var(--card);border-radius:12px;padding:9px 12px;font-size:12.5px;color:var(--ink-2);z-index:500">حرّك الخريطة حتى يكون الدبوس على مدخل الصيدلية</span>
     </div>
     <button class="btn" id="r-me" style="height:48px;background:var(--blue-soft);color:var(--blue);font-size:14px">${icon('locate', 18, 2)}أنا داخل الصيدلية الآن — استخدم موقعي</button>
     <div class="field"><label for="r-addr">وصف العنوان</label><input class="input" id="r-addr" value="${esc(d.address || '')}" placeholder="مثال: شارع المطار، بجوار مسجد الهدى" maxlength="140"></div>`;
   if (step === 3) body = `
     <p style="font-size:14px;color:var(--ink-2);line-height:1.8">نراجع الترخيص يدوياً لحماية المستخدمين. بعد الموافقة تظهر صيدليتك للعملاء بشارة <b style="color:var(--brand)">موثقة</b>.</p>
     <label class="drop">${d.license ? `${icon('check', 28, 2.2)}<b>${esc(d.license.name)}</b><span class="small muted">اضغط للتغيير</span>` :
-      `<span style="width:56px;height:56px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(11,110,91,.12)">${icon('upload', 26, 1.8)}</span><b>ارفع صورة ترخيص الصيدلية</b><span class="small muted">صورة واضحة أو PDF · حتى 5 ميغا</span>`}
+      `<span style="width:56px;height:56px;border-radius:16px;background:var(--card);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(11,110,91,.12)">${icon('upload', 26, 1.8)}</span><b>ارفع صورة ترخيص الصيدلية</b><span class="small muted">صورة واضحة أو PDF · حتى 5 ميغا</span>`}
       <input type="file" id="r-lic" accept="image/*,application/pdf" aria-label="صورة الترخيص"></label>
     <label class="list-card" style="position:relative;cursor:pointer">${icon('image', 22, 1.8)}<span class="grow col" style="gap:2px"><span class="bold" style="font-size:13.5px">${d.photo ? esc(d.photo.name) : 'صورة الصيدلية من الخارج (اختياري)'}</span><span class="small muted">تساعد العملاء على التعرّف عليها</span></span><span class="small bold" style="color:var(--brand)">${d.photo ? 'تغيير' : 'إضافة'}</span>
       <input type="file" id="r-photo" accept="image/*" style="position:absolute;inset:0;opacity:0"></label>
     <label class="row" style="align-items:flex-start;font-size:13px;line-height:1.7;color:var(--ink-2)"><input type="checkbox" id="r-pledge" ${d.pledge ? 'checked' : ''} style="width:20px;height:20px;margin-top:2px;accent-color:var(--brand)">أتعهد بعدم صرف أدوية الوصفة دون روشتة، وبتحديث حالة الصيدلية والمخزون باستمرار</label>`;
   return {
-    html: `<div class="screen no-nav" style="background:#fff">
+    html: `<div class="screen no-nav" style="background:var(--card)">
       ${topbar('تسجيل صيدلية', { back: '/account', sub: `الخطوة ${step} من 3 · ${names[step - 1]}` })}
       <div class="pad stack" style="padding-top:18px;gap:16px">
         <div class="steps"><span class="on"></span><span class="${step >= 2 ? 'on' : ''}"></span><span class="${step >= 3 ? 'on' : ''}"></span></div>
@@ -1305,10 +1386,10 @@ Screens.owner = async () => {
   ]);
   const lastPay = pays[0];
   const premiumCard = isPremium(p)
-    ? `<a href="#/upgrade" class="list-card" style="background:#FDF1D6;border-color:#F6DFA6">${icon('crown', 24, 1.9, 'style="color:#7A4B00"')}<span class="grow col" style="gap:2px"><b style="color:#7A4B00">صيدلية مميزة</b><span class="small" style="color:#7A4B00">تظهر أولاً في النتائج حتى ${fmtDate(p.plan_until)}</span></span><span class="small bold" style="color:#7A4B00">تجديد</span></a>`
+    ? `<a href="#/upgrade" class="list-card" style="background:var(--gold-soft);border-color:var(--gold-line)">${icon('crown', 24, 1.9, 'style="color:var(--gold-ink)"')}<span class="grow col" style="gap:2px"><b style="color:var(--gold-ink)">صيدلية مميزة</b><span class="small" style="color:var(--gold-ink)">تظهر أولاً في النتائج حتى ${fmtDate(p.plan_until)}</span></span><span class="small bold" style="color:var(--gold-ink)">تجديد</span></a>`
     : lastPay && lastPay.status === 'pending'
       ? `<div class="list-card">${icon('clock', 22, 1.9, 'style="color:var(--amber)"')}<span class="grow col" style="gap:2px"><b>طلب الترقية قيد المراجعة</b><span class="small muted">أُرسل ${ago(lastPay.created_at)} · سنفعّل اشتراكك بعد التحقق من التحويل</span></span></div>`
-      : `<a href="#/upgrade" class="list-card" style="background:var(--ink);border-color:var(--ink);color:#fff">${icon('crown', 24, 1.9, 'style="color:#F6C453"')}<span class="grow col" style="gap:2px"><b>اجعل صيدليتك مميزة</b><span class="small" style="color:#B9CBC5">${lastPay && lastPay.status === 'rejected' ? 'رُفض طلبك السابق' + (lastPay.admin_note ? ': ' + esc(lastPay.admin_note) : '') + ' · حاول مجدداً' : 'اظهر أولاً في البحث والخريطة'}</span></span><span style="color:#F6C453">${icon('fwd', 20, 2)}</span></a>`;
+      : `<a href="#/upgrade" class="list-card" style="background:var(--inv);border-color:var(--inv);color:#fff">${icon('crown', 24, 1.9, 'style="color:#F6C453"')}<span class="grow col" style="gap:2px"><b>اجعل صيدليتك مميزة</b><span class="small" style="color:var(--inv-muted)">${lastPay && lastPay.status === 'rejected' ? 'رُفض طلبك السابق' + (lastPay.admin_note ? ': ' + esc(lastPay.admin_note) : '') + ' · حاول مجدداً' : 'اظهر أولاً في البحث والخريطة'}</span></span><span style="color:#F6C453">${icon('fwd', 20, 2)}</span></a>`;
   inv.sort((a, b) => a.products.name.localeCompare(b.products.name, 'ar'));
   const unread = chats.reduce((n, c) => n + c.unread_pharmacy, 0);
   const segBtn = (r, v, label) => `<button data-pid="${r.product_id}" data-st="${v}" class="${r.status === v ? 'on-' + v : ''}" aria-pressed="${r.status === v}">${label}</button>`;
@@ -1320,7 +1401,7 @@ Screens.owner = async () => {
         <a href="#/pharmacy/${p.id}" class="icon-btn" aria-label="عرض صفحة الصيدلية">${icon('eye', 20, 1.8)}</a></div>
       <div class="pad stack" style="gap:16px">
         ${p.verified ? '' : `<div class="notice warn">${icon('shieldAlert', 18, 1.9)}<span><b>قيد المراجعة:</b> صيدليتك لا تظهر للعملاء حتى نتحقق من الترخيص. جهّز مخزونك الآن ليظهر مباشرة بعد التوثيق.</span></div>`}
-        <button class="toggle-card" id="openT" style="background:${p.is_open ? 'var(--brand)' : '#5B6B67'}" aria-pressed="${p.is_open}">
+        <button class="toggle-card" id="openT" style="background:${p.is_open ? 'var(--brand)' : 'var(--closed)'}" aria-pressed="${p.is_open}">
           <span class="grow col" style="gap:4px"><span style="font-size:13px;opacity:.85">حالة الصيدلية الآن</span><span style="font-size:22px;font-weight:700">${p.is_open ? 'مفتوحة' : 'مغلقة'}</span>
           <span style="font-size:12.5px;opacity:.85">حُدّثت ${ago(p.open_updated_at)} · اضغط ${p.is_open ? 'للإغلاق' : 'للفتح'}</span></span>
           <span class="switch"><i style="left:${p.is_open ? '4px' : '32px'}"></i></span></button>
@@ -1412,10 +1493,10 @@ Screens.upgrade = async () => {
   let months = plans.length ? plans[Math.min(1, plans.length - 1)][0] : 1, receipt = null;
   const perks = [['search', 'تظهر أولاً في نتائج البحث عن الأدوية'], ['map', 'تظهر أولاً في الخريطة والصيدليات القريبة'], ['crown', 'شارة "مميزة" بجانب اسم صيدليتك']];
   return {
-    html: `<div class="screen no-nav" style="background:#fff">${topbar('صيدلية مميزة', { back: '/owner' })}
+    html: `<div class="screen no-nav" style="background:var(--card)">${topbar('صيدلية مميزة', { back: '/owner' })}
       <div class="pad stack" style="padding-top:18px;gap:18px">
-        <div class="card" style="padding:16px;background:#FFFBF0;border-color:#F6DFA6;display:flex;flex-direction:column;gap:12px">
-          ${perks.map(([ic, t]) => `<div class="row" style="gap:12px"><span style="width:36px;height:36px;border-radius:11px;background:#FDF1D6;color:#7A4B00;display:flex;align-items:center;justify-content:center">${icon(ic, 18, 2)}</span><span style="font-size:14px;font-weight:500">${t}</span></div>`).join('')}
+        <div class="card" style="padding:16px;background:var(--gold-bg);border-color:var(--gold-line);display:flex;flex-direction:column;gap:12px">
+          ${perks.map(([ic, t]) => `<div class="row" style="gap:12px"><span style="width:36px;height:36px;border-radius:11px;background:var(--gold-soft);color:var(--gold-ink);display:flex;align-items:center;justify-content:center">${icon(ic, 18, 2)}</span><span style="font-size:14px;font-weight:500">${t}</span></div>`).join('')}
         </div>
         ${isPremium(p) ? `<div class="notice ok">${icon('check', 18, 2)}<span>اشتراكك فعّال حتى <b>${fmtDate(p.plan_until)}</b>. أي مدة جديدة تُضاف إليه.</span></div>` : ''}
         ${!ready ? emptyState('clock', 'الاشتراكات غير متاحة بعد', 'نجهّز طرق الدفع حالياً، حاول لاحقاً.') : `

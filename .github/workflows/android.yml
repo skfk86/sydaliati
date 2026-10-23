@@ -40,6 +40,13 @@ jobs:
           if [ ! -d android ]; then npx cap add android; fi
           bash scripts/android-permissions.sh
 
+      # أيقونة التطبيق وشاشة البداية من مجلد assets
+      - name: Generate icon and splash
+        run: |
+          npx capacitor-assets generate --android \
+            --iconBackgroundColor '#0B6E5B' --iconBackgroundColorDark '#0B6E5B' \
+            --splashBackgroundColor '#0B6E5B' --splashBackgroundColorDark '#0D1412'
+
       - name: Sync web code
         run: npx cap sync android
 

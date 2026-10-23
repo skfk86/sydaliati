@@ -2,9 +2,20 @@
   "appId": "com.sydaliati.sudan",
   "appName": "صيدليتي السودان",
   "webDir": "www",
-  "server": { "androidScheme": "https" },
+  "server": {
+    "androidScheme": "https"
+  },
   "plugins": {
-    "SplashScreen": { "launchShowDuration": 1200, "backgroundColor": "#0B6E5B", "showSpinner": false },
-    "StatusBar": { "style": "LIGHT", "backgroundColor": "#0B6E5B" }
+    "SplashScreen": {
+      "launchShowDuration": 800,
+      "launchAutoHide": true,
+      "backgroundColor": "#0B6E5B",
+      "showSpinner": false,
+      "androidScaleType": "CENTER_CROP"
+    },
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#0B6E5B"
+    }
   }
 }
