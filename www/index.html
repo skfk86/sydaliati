@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#0B6E5B">
 <meta name="color-scheme" content="light dark">
-<title>صيدليتي السودان</title>
+<title>حبّة</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="vendor/leaflet.css">
@@ -250,7 +250,7 @@ select.input{appearance:none}
 <body>
 <div id="boot" aria-hidden="true">
   <div class="logo"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#0B6E5B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M12 6.5v6M9 9.5h6"/></svg></div>
-  <div class="name">صيدليتي السودان</div><div class="tag">دواؤك أقرب مما تتوقع</div>
+  <div class="name">حبّة</div><div class="tag">دواؤك أقرب مما تتوقع</div>
   <div class="bar"><i></i></div>
 </div>
 <div id="app"></div>
@@ -261,7 +261,7 @@ select.input{appearance:none}
 <script>
 'use strict';
 /* =========================================================
-   صيدليتي السودان — تطبيق Capacitor بملف واحد + Supabase
+   حبّة — تطبيق Capacitor بملف واحد + Supabase
    ========================================================= */
 const SUPABASE_URL = 'https://gsplawplbiruyjkndblg.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_kZMvSQWDZi3j3GqoL0GIGA_yBnyYPkX';
@@ -673,7 +673,7 @@ const Bio = {
     try { const r = await this.p.isAvailable(); return !!(r && r.isAvailable); } catch { return false; }
   },
   async verify(reason) {
-    await this.p.verifyIdentity({ reason, title: 'صيدليتي السودان', subtitle: reason, description: '', negativeButtonText: 'إلغاء', maxAttempts: 3 });
+    await this.p.verifyIdentity({ reason, title: 'حبّة', subtitle: reason, description: '', negativeButtonText: 'إلغاء', maxAttempts: 3 });
   },
   async save(email, password) { await this.p.setCredentials({ username: email, password, server: BIO_SERVER }); await kv.set('bio_email', email); },
   async load() { return this.p.getCredentials({ server: BIO_SERVER }); },
@@ -715,7 +715,7 @@ Screens.login = async ({ query }) => {
       <div style="background:var(--brand);color:#fff;border-radius:0 0 36px 36px;padding:calc(36px + var(--safe-top)) 24px 34px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center">
         <span style="width:80px;height:80px;border-radius:24px;background:#fff;color:#0B6E5B;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px rgba(0,0,0,.18)">
           <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M12 6.5v6M9 9.5h6"/></svg></span>
-        <span style="font-size:24px;font-weight:700">صيدليتي السودان</span>
+        <span style="font-size:24px;font-weight:700">حبّة</span>
         <span style="font-size:14px;color:var(--hero-ink)">دواؤك أقرب مما تتوقع</span>
       </div>
       <form id="auth" class="pad stack" style="padding-top:28px;gap:16px" novalidate>
@@ -1071,7 +1071,7 @@ Screens.pharmacy = async ({ id, query }) => {
         } catch (e) { toast(errMsg(e), 'error'); }
       });
       $('#share').addEventListener('click', async () => {
-        const text = `${p.name} — ${p.address || cityName(p.city)}\nهاتف: ${p.phone}\n${loc ? `https://maps.google.com/?q=${loc.lat},${loc.lng}` : ''}\nعبر تطبيق صيدليتي السودان`;
+        const text = `${p.name} — ${p.address || cityName(p.city)}\nهاتف: ${p.phone}\n${loc ? `https://maps.google.com/?q=${loc.lat},${loc.lng}` : ''}\nعبر تطبيق حبّة`;
         try {
           const Sh = Plug('Share');
           if (Sh) await Sh.share({ title: p.name, text });

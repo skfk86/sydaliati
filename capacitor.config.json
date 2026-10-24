@@ -1,6 +1,6 @@
 {
-  "appId": "com.sydaliati.sudan",
-  "appName": "صيدليتي السودان",
+  "appId": "com.habba.sudan",
+  "appName": "حبّة",
   "webDir": "www",
   "server": {
     "androidScheme": "https"
