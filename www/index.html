@@ -845,70 +845,121 @@ Screens.home = async () => {
 };
 
 /* ===== البحث ===== */
+/* ===== الكتالوج: أدوات مشتركة ===== */
+const FORMS = [['tab','أقراص'],['cap','كبسولات'],['syr','شراب'],['susp','معلّق'],['drops','نقط بالفم'],['inj','حقن'],['inf','محلول وريدي'],
+  ['cream','كريم'],['oint','مرهم'],['gel','جل'],['supp','تحاميل'],['inh','بخاخ استنشاق'],['neb','محلول تبخير'],['eye','قطرة عين'],
+  ['ear','قطرة أذن'],['nasal','بخاخ أنف'],['sachet','أكياس'],['efftab','أقراص فوارة'],['loz','أقراص استحلاب'],['vag','مهبلي'],['spray','بخاخ'],['sol','محلول'],['powder','بودرة']];
+let CLASSES = null;
+async function loadClasses() {
+  if (!CLASSES) CLASSES = await q(sb.from('drug_classes').select('code, name_ar, sort').order('sort'));
+  return CLASSES;
+}
+const catIcon = (p) => p.category === 'gloves' ? 'glove' : p.category === 'supplies' ? 'kit' : 'pill';
+// نجمع الأشكال والتركيزات تحت مادة فعالة واحدة
+function groupProducts(rows) {
+  const m = new Map();
+  for (const p of rows) {
+    const key = p.generic_en || p.generic || p.name;
+    if (!m.has(key)) m.set(key, { key, title: p.generic || p.name, en: p.generic_en, brands: p.brands, rx: p.rx, match: p.match, cat: p.category, items: [] });
+    const g = m.get(key);
+    if (!g.match && p.match) g.match = p.match;
+    const label = [p.strength, p.form ? (FORMS.find(f => f[0] === p.form) || [, p.form])[1] : ''].filter(Boolean).join(' ') || p.name;
+    g.items.push({ id: p.id, label, pending: p.status === 'pending' });
+  }
+  return [...m.values()];
+}
+const brandsShort = (b) => b ? esc(b.split(',').map(x => x.trim()).filter(Boolean).slice(0, 3).join('، ')) : '';
+function groupCard(g, chip) {
+  const matchCls = !g.match ? '' : g.match.startsWith('يُستخدم') ? 'b-low' : g.match === 'هل تقصد؟' ? 'b-closed' : 'b-open';
+  return `<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:10px">
+    <div class="row" style="align-items:flex-start">
+      <span style="width:40px;height:40px;border-radius:12px;background:var(--field);color:var(--brand);display:flex;align-items:center;justify-content:center">${icon(catIcon({ category: g.cat }), 19, 1.8)}</span>
+      <span class="grow col" style="gap:2px"><b style="font-size:15px">${esc(g.title)}</b>
+        ${g.en || g.brands ? `<span class="small muted" style="line-height:1.6">${g.en ? `<span dir="ltr">${esc(g.en)}</span>` : ''}${g.en && g.brands ? ' · ' : ''}${brandsShort(g.brands)}</span>` : ''}</span>
+      <span class="col" style="gap:4px;align-items:flex-end">${g.rx ? '<span class="badge b-rx">بوصفة</span>' : ''}${g.match ? `<span class="badge ${matchCls}">${esc(g.match)}</span>` : ''}</span>
+    </div>
+    <div class="chips" style="flex-wrap:wrap">${g.items.map(chip).join('')}</div></div>`;
+}
+
+/* ===== البحث الذكي ===== */
 Screens.search = async ({ query }) => {
-  const cat = query.cat || '';
+  const cat = query.cat || '', cls = query.cls || '';
   const CAT = { '': 'الكل', medicine: 'أدوية', gloves: 'قفازات', supplies: 'مستلزمات' };
+  const classes = await loadClasses();
+  const clsName = cls ? ((classes.find(c => c.code === cls) || {}).name_ar || '') : '';
   return {
     html: `<div class="screen no-nav">
       <header class="topbar" style="flex-direction:column;align-items:stretch;gap:12px">
         <div class="row"><button class="icon-btn" aria-label="رجوع" onclick="goBack('/home')">${icon('back')}</button>
-          <label class="searchbox grow" style="border:1.5px solid var(--brand)">${icon('search', 18, 2)}<input id="sq" value="${esc(query.q || '')}" placeholder="اسم الدواء أو الاسم العلمي" aria-label="بحث" enterkeyhint="search" autocomplete="off"></label></div>
-        <div class="chips">${Object.entries(CAT).map(([k, v]) => `<button class="chip ${cat === k ? 'on' : ''}" data-cat="${k}">${v}</button>`).join('')}</div>
+          <label class="searchbox grow" style="border:1.5px solid var(--brand)">${icon('search', 18, 2)}<input id="sq" value="${esc(query.q || '')}" placeholder="اسم تجاري، مادة فعالة، أو عرَض (مثل: صداع)" aria-label="بحث" enterkeyhint="search" autocomplete="off"></label></div>
+        ${cls ? `<div class="row" style="justify-content:space-between"><b>${esc(clsName)}</b><a href="#/search" class="small bold">كل الفئات</a></div>` :
+          `<div class="chips">${Object.entries(CAT).map(([k, v]) => `<button class="chip ${cat === k ? 'on' : ''}" data-cat="${k}">${v}</button>`).join('')}</div>`}
       </header>
       <div id="results" class="pad stack" style="padding-top:16px"></div></div>`,
     mount() {
       const input = $('#sq'), box = $('#results');
       let t, seq = 0;
+      const chip = (it) => `<a class="chip" href="#/product/${it.id}" style="height:34px">${esc(it.label)}${it.pending ? ' · قيد المراجعة' : ''}</a>`;
+      const browse = () => {
+        const list = classes.filter(c => cat === 'gloves' ? c.code === 'gloves' : cat === 'supplies' ? ['supplies', 'devices', 'baby', 'iv'].includes(c.code) : cat === 'medicine' ? !['gloves', 'supplies', 'devices', 'baby'].includes(c.code) : true);
+        box.innerHTML = `<p class="small muted">تصفّح حسب الفئة العلاجية، أو ابحث بالاسم التجاري أو العلمي أو العَرَض.</p>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${list.map((c, i) => { const [bg, fg] = TINTS[i % 5];
+            return `<a href="#/search?cls=${c.code}" class="card" style="padding:14px;display:flex;align-items:center;gap:10px;color:var(--ink);min-height:64px">
+              <span style="width:10px;height:10px;border-radius:50%;background:${fg};flex-shrink:0"></span><b style="font-size:13.5px;line-height:1.5">${esc(c.name_ar)}</b></a>`; }).join('')}</div>`;
+      };
       const run = async () => {
         const term = input.value.trim(), my = ++seq;
-        box.innerHTML = '<div class="sk" style="height:70px"></div>'.repeat(3);
+        if (term.length < 2 && !cls) return browse();
+        box.innerHTML = '<div class="sk" style="height:110px"></div>'.repeat(3);
         try {
-          let rows;
-          if (term.length >= 2) rows = await q(sb.rpc('search_products', { q: term }));
-          else {
-            let qq = sb.from('products').select('*').order('name').limit(60);
-            if (cat) qq = qq.eq('category', cat);
-            rows = await q(qq);
-          }
-          if (cat) rows = rows.filter(r => r.category === cat);
+          const rows = term.length >= 2
+            ? await q(sb.rpc('smart_search', { q: term, cat: cat || null, lim: 80 }))
+            : await q(sb.from('products').select('*').eq('class_code', cls).neq('status', 'rejected').order('pop', { ascending: false }).order('name').limit(400));
           if (my !== seq) return;
-          box.innerHTML = rows.length ? `<div class="card divider-list" style="padding:0 14px">${rows.map(productRow).join('')}</div>` :
+          const groups = groupProducts(cls && term.length >= 2 ? rows.filter(r => r.class_code === cls) : rows);
+          const symptom = groups.some(g => g.match && g.match.startsWith('يُستخدم'));
+          box.innerHTML = groups.length ? `${symptom ? `<div class="notice warn">${icon('shieldAlert', 18, 1.9)}<span>هذه أدوية تُستخدم عادةً لـ «${esc(term)}». اقتراحات عامة فقط، <b>استشر الصيدلي أو الطبيب</b> قبل استخدام أي دواء.</span></div>` : ''}
+            <p class="small muted">${groups.length} مادة فعالة · ${rows.length} شكل وتركيز</p>${groups.map(g => groupCard(g, chip)).join('')}` :
             emptyState('search', 'لم نجد هذا الصنف', 'جرّب الاسم العلمي أو اسماً آخر، أو اسأل الصيدلية مباشرة عبر الدردشة.');
         } catch (e) { if (my === seq) box.innerHTML = emptyState('wifiOff', 'تعذّر البحث', errMsg(e)); }
       };
-      input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(run, 300); });
+      input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(run, 280); });
       input.addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(t); run(); input.blur(); } });
       document.querySelectorAll('[data-cat]').forEach(b => b.addEventListener('click', () => {
         const p = {}; if (input.value.trim()) p.q = input.value.trim(); if (b.dataset.cat) p.cat = b.dataset.cat;
         location.replace('#/search' + (Object.keys(p).length ? '?' + new URLSearchParams(p) : ''));
       }));
-      run(); if (!query.q && !cat) input.focus();
+      run(); if (!query.q && !cls) input.focus();
     }
   };
 };
-function productRow(p) {
-  const ic = p.category === 'gloves' ? 'glove' : p.category === 'supplies' ? 'kit' : 'pill';
-  return `<a href="#/product/${p.id}" class="row" style="padding:12px 0;color:var(--ink)">
-    <span style="width:42px;height:42px;border-radius:12px;background:var(--field);color:var(--brand);display:flex;align-items:center;justify-content:center">${icon(ic, 20, 1.8)}</span>
-    <span class="grow col" style="gap:2px"><span class="bold" style="font-size:14.5px">${esc(p.name)}</span>${p.generic ? `<span class="small muted ellipsis">${esc(p.generic)}</span>` : ''}</span>
-    ${p.rx ? '<span class="badge b-rx">بوصفة</span>' : ''}<span style="color:var(--faint)">${icon('fwd', 18, 2)}</span></a>`;
-}
 
-/* ===== منتج: أين يتوفر ===== */
+/* ===== منتج: أين يتوفر + البدائل ===== */
 Screens.product = async ({ id }) => {
   const c = await getCoords();
-  const [product, rows] = await Promise.all([
-    q(sb.from('products').select('*').eq('id', id).single()),
-    q(sb.rpc('where_available', { pid: id, lat: c.lat, lng: c.lng, radius_m: 30000 }))
+  const [product, rows, alts] = await Promise.all([
+    q(sb.from('products').select('*, drug_classes(code, name_ar)').eq('id', id).single()),
+    q(sb.rpc('where_available', { pid: id, lat: c.lat, lng: c.lng, radius_m: 30000 })),
+    q(sb.rpc('product_alternatives', { pid: id })).catch(() => [])
   ]);
-  const ic = product.category === 'gloves' ? 'glove' : product.category === 'supplies' ? 'kit' : 'pill';
+  const ic = catIcon(product);
+  const sameGen = alts.filter(a => a.relation === 'نفس المادة الفعالة'), sameCls = alts.filter(a => a.relation !== 'نفس المادة الفعالة');
+  const altRow = (a) => `<a href="#/product/${a.id}" class="row" style="padding:12px 0;color:var(--ink)">
+      <span class="grow col" style="gap:2px"><b style="font-size:14px">${esc(a.name)}</b>${a.brands ? `<span class="small muted">${brandsShort(a.brands)}</span>` : ''}</span>
+      ${a.available_count ? `<span class="badge b-open">متوفر في ${a.available_count}</span>` : '<span class="small muted">—</span>'}
+      <span style="color:var(--faint)">${icon('fwd', 18, 2)}</span></a>`;
+  const altBlock = (title, list) => list.length ? `<div class="col" style="gap:6px"><h3 style="font-size:14.5px">${title}</h3><div class="card divider-list" style="padding:0 14px">${list.map(altRow).join('')}</div></div>` : '';
   return {
     html: `<div class="screen no-nav">${topbar('أين يتوفر؟', { back: '/search' })}
-      <div class="pad" style="padding-top:16px"><div class="list-card">
+      <div class="pad stack" style="padding-top:16px;gap:12px"><div class="list-card" style="align-items:flex-start">
         <span class="avatar" style="background:var(--blue-soft);color:var(--blue)">${icon(ic, 28, 1.8)}</span>
-        <span class="grow col" style="gap:3px"><span style="font-size:16px;font-weight:700">${esc(product.name)}</span>${product.generic ? `<span class="small muted">${esc(product.generic)}</span>` : ''}</span>
+        <span class="grow col" style="gap:3px"><span style="font-size:16px;font-weight:700;line-height:1.5">${esc(product.name)}</span>
+          ${product.name_en ? `<span class="small muted" dir="ltr" style="text-align:right">${esc(product.name_en)}</span>` : ''}
+          ${product.brands ? `<span class="small muted">الأسماء التجارية: ${esc(product.brands)}</span>` : ''}
+          ${product.drug_classes ? `<a href="#/search?cls=${product.drug_classes.code}" class="small bold" style="margin-top:2px">${esc(product.drug_classes.name_ar)}</a>` : ''}</span>
         <span class="badge ${product.rx ? 'b-rx' : 'b-closed'}">${product.rx ? 'يحتاج وصفة' : 'بدون وصفة'}</span></div>
-        ${product.rx ? `<div class="notice info" style="margin-top:12px">${icon('file', 18, 1.9)}<span>هذا الدواء يُصرف بوصفة طبية. أحضر الروشتة معك إلى الصيدلية.</span></div>` : ''}
+        ${product.status === 'pending' ? `<div class="notice warn">${icon('clock', 18, 1.9)}<span>صنف جديد قيد مراجعة المشرف.</span></div>` : ''}
+        ${product.rx ? `<div class="notice info">${icon('file', 18, 1.9)}<span>هذا الدواء يُصرف بوصفة طبية. أحضر الروشتة معك إلى الصيدلية.</span></div>` : ''}
       </div>
       <div class="section-head" style="padding-top:20px"><h2 style="font-size:15px">${rows.length ? `متوفر في ${rows.length} ${rows.length === 1 ? 'صيدلية' : rows.length === 2 ? 'صيدليتين' : rows.length <= 10 ? 'صيدليات' : 'صيدلية'}` : 'غير متوفر حالياً'}</h2>${rows.length ? '<span class="small muted">الأقرب أولاً</span>' : ''}</div>
       <div class="pad stack">${rows.length ? rows.map(r => {
@@ -923,7 +974,11 @@ Screens.product = async ({ id }) => {
             <span class="row" style="gap:6px"><span class="badge ${cls}">${label}</span>${r.is_open ? '' : '<span class="badge b-closed">مغلقة الآن</span>'}</span>
             <span class="row small muted" style="gap:4px">${icon('clock', 14, 2)}حُدّث ${ago(r.updated_at)}</span>
           </span></a>`; }).join('') :
-        emptyState('search', 'لم تُسجّل أي صيدلية قريبة هذا الصنف بعد', 'قد يكون متوفراً لكن لم يُحدَّث المخزون. تواصل مع أقرب صيدلية عبر الدردشة للتأكد.', `<a class="btn btn-soft" href="#/home" style="max-width:240px">الصيدليات القريبة</a>`)}</div></div>`
+        emptyState('search', 'لم تُسجّل أي صيدلية قريبة هذا الصنف بعد', sameGen.some(a => a.available_count) ? 'لكن توجد بدائل بنفس المادة الفعالة متوفرة، تجدها بالأسفل.' : 'قد يكون متوفراً لكن لم يُحدَّث المخزون. تواصل مع أقرب صيدلية عبر الدردشة للتأكد.')}
+        ${altBlock(rows.length ? 'تركيزات وأشكال أخرى' : 'بدائل بنفس المادة الفعالة', sameGen)}
+        ${altBlock('من نفس الفئة العلاجية', sameCls.slice(0, 6))}
+        ${alts.length ? `<p class="small muted" style="line-height:1.7;padding-bottom:12px">${icon('shieldAlert', 14, 2)} لا تستبدل دواءً بآخر إلا باستشارة الصيدلي أو الطبيب.</p>` : ''}
+      </div></div>`
   };
 };
 
@@ -1566,32 +1621,94 @@ Screens.owner = async () => {
   };
 };
 function addItemSheet(pharmacyId, existing) {
-  openSheet(`<h3>إضافة صنف للمخزون</h3>
-    <label class="searchbox" style="margin-bottom:12px">${icon('search', 18, 2)}<input id="aq" placeholder="ابحث في الكتالوج" autocomplete="off"></label>
-    <div id="ares" class="divider-list" style="min-height:200px"></div>
-    <p class="small muted" style="margin-top:12px;line-height:1.7">لم تجد الصنف؟ أرسل اسمه لنا عبر الدعم وسنضيفه للكتالوج.</p>`, () => {
-    const input = $('#aq'), box = $('#ares'); let t;
-    const run = async () => {
-      const term = input.value.trim();
-      try {
-        const rows = term.length >= 2 ? await q(sb.rpc('search_products', { q: term })) : await q(sb.from('products').select('*').order('name').limit(40));
-        box.innerHTML = rows.length ? rows.map(r => `<button class="row" data-add="${r.id}" style="width:100%;padding:12px 0;text-align:right" ${existing.has(r.id) ? 'disabled' : ''}>
-          <span class="grow col" style="gap:2px"><span class="bold" style="font-size:14px">${esc(r.name)}</span>${r.generic ? `<span class="small muted">${esc(r.generic)}</span>` : ''}</span>
-          ${existing.has(r.id) ? '<span class="small muted">مضاف</span>' : `<span class="icon-btn soft" style="width:36px;height:36px">${icon('plus', 18, 2)}</span>`}</button>`).join('') :
-          `<p class="small muted" style="padding:20px 0;text-align:center">لا نتائج</p>`;
-        box.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', async () => {
-          try {
-            await q(sb.from('inventory').insert({ pharmacy_id: pharmacyId, product_id: b.dataset.add, status: 'ok' }));
-            existing.add(b.dataset.add); b.disabled = true; b.lastElementChild.outerHTML = '<span class="small" style="color:var(--brand);font-weight:600">تمت الإضافة</span>';
-            closeSheet._dirty = true;
-          } catch (e) { toast(errMsg(e), 'error'); }
-        }));
-      } catch (e) { box.innerHTML = `<p class="small muted">${errMsg(e)}</p>`; }
+  let dirty = false, tab = 'search';
+  const addOne = async (pid) => {
+    await q(sb.from('inventory').insert({ pharmacy_id: pharmacyId, product_id: pid, status: 'ok' }));
+    existing.add(pid); dirty = true;
+  };
+  const chip = (it) => existing.has(it.id)
+    ? `<span class="chip" style="height:34px;background:var(--brand-soft);border-color:transparent;color:var(--brand)">${icon('check', 14, 2.4)}${esc(it.label)}</span>`
+    : `<button class="chip" data-add="${it.id}" style="height:34px">${icon('plus', 14, 2.4)}${esc(it.label)}</button>`;
+  const bindAdds = (root) => root.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', async () => {
+    b.disabled = true;
+    try { await addOne(b.dataset.add); b.outerHTML = `<span class="chip" style="height:34px;background:var(--brand-soft);border-color:transparent;color:var(--brand)">${icon('check', 14, 2.4)}${b.textContent}</span>`; }
+    catch (e) { b.disabled = false; toast(errMsg(e), 'error'); }
+  }));
+  openSheet(`<h3>إضافة أصناف لمخزونك</h3>
+    <div class="tabs" style="margin-bottom:14px">${[['search', 'بحث'], ['class', 'حسب الفئة'], ['new', 'صنف جديد']].map(([k, v]) => `<button data-tab="${k}" class="${k === tab ? 'on' : ''}">${v}</button>`).join('')}</div>
+    <div id="aBody"></div>`, async (o) => {
+    const body = $('#aBody');
+    o.addEventListener('click', (e) => { if (e.target === o && dirty) render(); });
+    const showSearch = () => {
+      body.innerHTML = `<label class="searchbox" style="margin-bottom:12px">${icon('search', 18, 2)}<input id="aq" placeholder="اسم تجاري أو علمي (عربي أو إنجليزي)" autocomplete="off"></label>
+        <div id="ares" class="stack" style="gap:10px;min-height:200px"><p class="small muted" style="line-height:1.8">اكتب أول حروف الاسم، مثلاً: <b dir="ltr">augm</b> أو <b>بنادول</b> أو <b>سيبرو</b>. الأخطاء الإملائية مقبولة.</p></div>`;
+      const input = $('#aq'), box = $('#ares'); let t, seq = 0;
+      input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(async () => {
+        const term = input.value.trim(), my = ++seq; if (term.length < 2) return;
+        try {
+          const rows = await q(sb.rpc('smart_search', { q: term, cat: null, lim: 40 }));
+          if (my !== seq) return;
+          const groups = groupProducts(rows);
+          box.innerHTML = groups.length ? groups.map(g => groupCard(g, chip)).join('') :
+            `<div class="empty" style="padding:16px 0"><h3>لم نجده في الكتالوج</h3><button class="btn btn-soft" id="goNew" style="max-width:240px">${icon('plus', 18, 2)}أضفه كصنف جديد</button></div>`;
+          bindAdds(box); const gn = $('#goNew'); if (gn) gn.addEventListener('click', () => switchTab('new', term));
+        } catch (e) { box.innerHTML = `<p class="small muted">${errMsg(e)}</p>`; }
+      }, 280); });
+      input.focus();
     };
-    input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(run, 300); });
-    run();
-    const ov = $('#sheet');
-    ov.addEventListener('click', (e) => { if (e.target === ov && closeSheet._dirty) { closeSheet._dirty = false; render(); } });
+    const showClass = async () => {
+      const classes = await loadClasses();
+      body.innerHTML = `<div class="field" style="margin-bottom:12px"><label for="acls">اختر الفئة</label><select id="acls" class="input">${classes.map(c => `<option value="${c.code}">${esc(c.name_ar)}</option>`).join('')}</select></div>
+        <button class="btn btn-soft" id="aTop" style="height:46px;font-size:14px;margin-bottom:12px">${icon('plus', 18, 2)}أضف الأصناف الأكثر شيوعاً في هذه الفئة</button>
+        <div id="ares" class="stack" style="gap:10px"></div>`;
+      let rows = [];
+      const load = async () => {
+        rows = await q(sb.from('products').select('*').eq('class_code', $('#acls').value).neq('status', 'rejected').order('pop', { ascending: false }).order('name').limit(400));
+        $('#ares').innerHTML = groupProducts(rows).map(g => groupCard(g, chip)).join(''); bindAdds($('#ares'));
+      };
+      $('#acls').addEventListener('change', load);
+      $('#aTop').addEventListener('click', async (e) => {
+        const btn = e.currentTarget; btn.disabled = true;
+        // أشهر الأشكال: أول شكلين لكل مادة فعالة شائعة
+        const seen = {}, pick = rows.filter(p => p.pop > 0 && !existing.has(p.id) && ((seen[p.generic_en] = (seen[p.generic_en] || 0) + 1) <= 2)).slice(0, 25);
+        if (!pick.length) { btn.disabled = false; return toast('أضفت كل الأصناف الشائعة في هذه الفئة'); }
+        try {
+          await q(sb.from('inventory').insert(pick.map(p => ({ pharmacy_id: pharmacyId, product_id: p.id, status: 'ok' }))));
+          pick.forEach(p => existing.add(p.id)); dirty = true; toast(`أُضيف ${pick.length} صنفاً`, 'success'); btn.disabled = false; load();
+        } catch (err) { btn.disabled = false; toast(errMsg(err), 'error'); }
+      });
+      load();
+    };
+    const showNew = async (prefill = '') => {
+      const classes = await loadClasses();
+      body.innerHTML = `<p class="small muted" style="line-height:1.8;margin-bottom:12px">يُضاف لمخزونك فوراً، ويظهر لكل الصيدليات بعد مراجعة المشرف.</p>
+        <div class="stack" style="gap:12px">
+          <div class="field"><label for="nN">اسم الصنف (تجاري أو علمي)</label><input id="nN" class="input" value="${esc(prefill)}" placeholder="مثال: Augmentin أو أوجمنتين"></div>
+          <div class="field"><label for="nG">المادة الفعالة (اختياري)</label><input id="nG" class="input" placeholder="مثال: Amoxicillin + Clavulanic Acid"></div>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+            <div class="field"><label for="nS">التركيز</label><input id="nS" class="input" dir="ltr" placeholder="625mg"></div>
+            <div class="field"><label for="nF">الشكل</label><select id="nF" class="input"><option value="">—</option>${FORMS.map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></div></div>
+          <div class="field"><label for="nC">الفئة</label><select id="nC" class="input"><option value="">—</option>${classes.map(c => `<option value="${c.code}">${esc(c.name_ar)}</option>`).join('')}</select></div>
+          <label class="row" style="min-height:44px;font-size:14px"><input type="checkbox" id="nR" style="width:20px;height:20px;accent-color:var(--brand)">يحتاج وصفة طبية</label>
+          <button class="btn btn-primary" id="nGo">${icon('plus', 18, 2)}إضافة لمخزوني</button></div>`;
+      $('#nGo').addEventListener('click', async (e) => {
+        const name = $('#nN').value.trim(); if (name.length < 2) return toast('اكتب اسم الصنف', 'error');
+        const btn = e.currentTarget; btn.disabled = true;
+        try {
+          const pid = await q(sb.rpc('propose_product', { p_name: name, p_generic: $('#nG').value.trim() || null, p_form: $('#nF').value || null,
+            p_strength: $('#nS').value.trim() || null, p_rx: $('#nR').checked, p_class: $('#nC').value || null, p_brands: null }));
+          if (!existing.has(pid)) await addOne(pid);
+          toast('أُضيف لمخزونك، وسيُراجع قبل ظهوره لبقية الصيدليات', 'success');
+          dirty = true; closeSheet(); render();
+        } catch (err) { btn.disabled = false; toast(String(err.message || '').includes('too many') ? 'وصلت للحد اليومي للأصناف الجديدة' : errMsg(err), 'error'); }
+      });
+    };
+    const switchTab = (k, prefill) => {
+      tab = k; o.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === k));
+      (k === 'search' ? showSearch : k === 'class' ? showClass : () => showNew(prefill || ''))();
+    };
+    o.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+    showSearch();
   });
 }
 
@@ -1726,12 +1843,28 @@ Screens.admin = async ({ query }) => {
           <button class="btn btn-primary" style="height:40px;font-size:13px;width:auto;padding:0 14px" data-resolve="${r.id}">${icon('check', 16, 2)}تم الحل</button></div>` : ''}
       </div>`; }).join('') : emptyState('flag', 'لا توجد بلاغات', 'ستظهر هنا بلاغات المستخدمين عن الصيدليات والمحادثات والتطبيق.');
   } else {
-    content = `<form id="prodForm" class="card stack" style="padding:16px;gap:14px">
-      <div class="field"><label for="p-name">اسم الصنف كما يُباع</label><input class="input" id="p-name" required placeholder="مثال: بنادول إكسترا 24 قرص"></div>
-      <div class="field"><label for="p-gen">الاسم العلمي</label><input class="input" id="p-gen" placeholder="مثال: باراسيتامول + كافيين"></div>
-      <div class="field"><label for="p-cat">الفئة</label><select class="input" id="p-cat"><option value="medicine">أدوية</option><option value="gloves">قفازات</option><option value="supplies">مستلزمات</option></select></div>
-      <label class="row" style="min-height:44px;font-size:14px"><input type="checkbox" id="p-rx" style="width:20px;height:20px;accent-color:var(--brand)">يحتاج وصفة طبية</label>
-      <button class="btn btn-primary" type="submit">${icon('plus', 18, 2)}إضافة للكتالوج</button></form>`;
+    const [pend, classes, total] = await Promise.all([
+      q(sb.from('products').select('*').eq('status', 'pending').order('created_at', { ascending: false }).limit(100)),
+      loadClasses(),
+      sb.from('products').select('id', { count: 'exact', head: true }).eq('status', 'approved')
+    ]);
+    content = `<p class="small muted">${total.count || 0} صنف في الكتالوج</p>
+      <div class="col" style="gap:8px"><h2 style="font-size:16px">أصناف أضافها الصيادلة (${pend.length})</h2>
+      ${pend.length ? `<div class="card divider-list" style="padding:0 14px">${pend.map(p => `<div class="col" style="padding:12px 0;gap:8px">
+        <div class="col" style="gap:2px"><b>${esc(p.name)}</b><span class="small muted">${esc([p.generic, p.class_code ? (classes.find(c => c.code === p.class_code) || {}).name_ar : '', p.rx ? 'بوصفة' : ''].filter(Boolean).join(' · '))} · ${ago(p.created_at)}</span></div>
+        <div class="row"><button class="btn" style="height:40px;font-size:13px;background:var(--red-soft);color:var(--red)" data-prej="${p.id}">رفض</button>
+          <button class="btn btn-primary" style="height:40px;font-size:13px" data-pok="${p.id}">${icon('check', 16, 2)}اعتماد للجميع</button></div></div>`).join('')}</div>` :
+        `<div class="card small muted" style="padding:14px;text-align:center">لا توجد أصناف بانتظار المراجعة</div>`}</div>
+      <form id="prodForm" class="card stack" style="padding:16px;gap:12px"><h2 style="font-size:16px">إضافة صنف للكتالوج</h2>
+        <div class="field"><label for="p-gen">المادة الفعالة بالعربي</label><input class="input" id="p-gen" required placeholder="مثال: أموكسيسيلين"></div>
+        <div class="field"><label for="p-en">بالإنجليزي</label><input class="input" id="p-en" dir="ltr" placeholder="Amoxicillin"></div>
+        <div class="field"><label for="p-br">الأسماء التجارية (افصل بفاصلة)</label><input class="input" id="p-br" placeholder="Amoxil اموكسيل, Ospamox"></div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+          <div class="field"><label for="p-st">التركيز</label><input class="input" id="p-st" dir="ltr" placeholder="500mg"></div>
+          <div class="field"><label for="p-fm">الشكل</label><select class="input" id="p-fm"><option value="">—</option>${FORMS.map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></div></div>
+        <div class="field"><label for="p-cl">الفئة العلاجية</label><select class="input" id="p-cl">${classes.map(c => `<option value="${c.code}">${esc(c.name_ar)}</option>`).join('')}</select></div>
+        <label class="row" style="min-height:44px;font-size:14px"><input type="checkbox" id="p-rx" style="width:20px;height:20px;accent-color:var(--brand)">يحتاج وصفة طبية</label>
+        <button class="btn btn-primary" type="submit">${icon('plus', 18, 2)}إضافة للكتالوج</button></form>`;
   }
   const tabs = [['pending', 'التوثيق'], ['payments', 'المدفوعات'], ['reports', 'البلاغات'], ['catalog', 'الكتالوج'], ['settings', 'الإعدادات']];
   return {
@@ -1787,12 +1920,23 @@ Screens.admin = async ({ query }) => {
           });
         });
       }));
+      document.querySelectorAll('[data-pok]').forEach(b => b.addEventListener('click', async () => {
+        try { await q(sb.from('products').update({ status: 'approved' }).eq('id', b.dataset.pok)); toast('اعتُمد الصنف للجميع', 'success'); render(); } catch (e) { toast(errMsg(e), 'error'); }
+      }));
+      document.querySelectorAll('[data-prej]').forEach(b => b.addEventListener('click', async () => {
+        try { await q(sb.from('products').update({ status: 'rejected' }).eq('id', b.dataset.prej)); toast('رُفض الصنف'); render(); } catch (e) { toast(errMsg(e), 'error'); }
+      }));
       const f = $('#prodForm');
       if (f) f.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const name = $('#p-name').value.trim(); if (!name) return;
+        const gen = $('#p-gen').value.trim(); if (!gen) return;
+        const en = $('#p-en').value.trim(), st = $('#p-st').value.trim(), fm = $('#p-fm').value, cl = $('#p-cl').value;
+        const fAr = fm ? FORMS.find(x => x[0] === fm)[1] : '';
+        const catOf = cl === 'gloves' ? 'gloves' : ['supplies', 'devices', 'iv', 'baby'].includes(cl) ? 'supplies' : 'medicine';
         try {
-          await q(sb.from('products').insert({ name, generic: $('#p-gen').value.trim() || null, category: $('#p-cat').value, rx: $('#p-rx').checked }));
+          await q(sb.from('products').insert({ name: [gen, st, fAr].filter(Boolean).join(' '), name_en: en ? [en, st].filter(Boolean).join(' ') : null,
+            generic: gen, generic_en: en || null, brands: $('#p-br').value.trim() || null, strength: st || null, form: fm || null,
+            class_code: cl, category: catOf, rx: $('#p-rx').checked, status: 'approved' }));
           toast('أُضيف الصنف', 'success'); f.reset();
         } catch (err) { toast(errMsg(err), 'error'); }
       });
