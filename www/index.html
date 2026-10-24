@@ -664,10 +664,52 @@ function closeSheet() { const s = $('#sheet'); if (s) s.remove(); }
 /* ---------- الشاشات ---------- */
 const Screens = {};
 
+/* ===== الدخول بالبصمة (بيانات الدخول تُحفظ مشفّرة في Android Keystore) ===== */
+const BIO_SERVER = 'sydaliati.sudan';
+const Bio = {
+  get p() { return isNative ? Plug('NativeBiometric') : null; },
+  async available() {
+    if (!this.p) return false;
+    try { const r = await this.p.isAvailable(); return !!(r && r.isAvailable); } catch { return false; }
+  },
+  async verify(reason) {
+    await this.p.verifyIdentity({ reason, title: 'صيدليتي السودان', subtitle: reason, description: '', negativeButtonText: 'إلغاء', maxAttempts: 3 });
+  },
+  async save(email, password) { await this.p.setCredentials({ username: email, password, server: BIO_SERVER }); await kv.set('bio_email', email); },
+  async load() { return this.p.getCredentials({ server: BIO_SERVER }); },
+  async clear() { try { if (this.p) await this.p.deleteCredentials({ server: BIO_SERVER }); } catch {} await kv.remove('bio_email'); },
+  async email() { return this.p ? await kv.get('bio_email') : null; }
+};
+const FINGER = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg>';
+
+function bioErr(e) {
+  const m = String((e && e.message) || '').toLowerCase(), code = String((e && e.code) || '');
+  if (m.includes('cancel') || ['10', '13', '16'].includes(code)) return null; // ألغاه المستخدم
+  return 'تعذّر التحقق من البصمة';
+}
+
+// بعد الدخول بكلمة المرور: نعرض تفعيل البصمة مرة واحدة
+async function offerBiometric(email, password, then) {
+  if (!(await Bio.available()) || (await Bio.email()) === email || (await kv.get('bio_asked_' + email))) return then();
+  await kv.set('bio_asked_' + email, '1');
+  openSheet(`<div class="empty" style="padding:6px 0 0"><div class="ic">${FINGER}</div><h3>الدخول بالبصمة</h3>
+    <p class="small" style="line-height:1.8">ادخل في المرات القادمة ببصمتك بدل كتابة كلمة المرور.</p></div>
+    <div class="stack" style="gap:8px;margin-top:16px"><button class="btn btn-primary" id="bioOn">تفعيل البصمة</button><button class="btn btn-ghost" id="bioLater">لاحقاً</button></div>`, (o) => {
+    let done = false; const finish = () => { if (done) return; done = true; closeSheet(); then(); };
+    o.addEventListener('click', (e) => { if (e.target === o) finish(); });
+    $('#bioLater').addEventListener('click', finish);
+    $('#bioOn').addEventListener('click', async () => {
+      try { await Bio.verify('أكّد بصمتك لتفعيل الدخول السريع'); await Bio.save(email, password); toast('تم تفعيل الدخول بالبصمة', 'success'); finish(); }
+      catch (e) { const m = bioErr(e); if (m) toast(m, 'error'); }
+    });
+  });
+}
+
 /* ===== تسجيل الدخول ===== */
 Screens.login = async ({ query }) => {
   const signup = query.mode === 'signup';
   const next = query.next || '/home';
+  const bioEmail = !signup && (await Bio.available()) ? await Bio.email() : null;
   return {
     html: `<div class="screen no-nav" style="background:var(--card)">
       <div style="background:var(--brand);color:#fff;border-radius:0 0 36px 36px;padding:calc(36px + var(--safe-top)) 24px 34px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center">
@@ -679,6 +721,10 @@ Screens.login = async ({ query }) => {
       <form id="auth" class="pad stack" style="padding-top:28px;gap:16px" novalidate>
         <div class="col" style="gap:4px"><h1 style="font-size:21px">${signup ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}</h1>
           <p class="small muted">${signup ? 'سجّل لتتواصل مع الصيدليات وتحفظ المفضلة' : 'أهلاً بعودتك'}</p></div>
+        ${bioEmail ? `<button type="button" id="bioLogin" class="list-card" style="padding:16px;border-color:var(--brand);gap:14px">
+            <span class="avatar" style="background:var(--brand-soft);color:var(--brand)">${FINGER}</span>
+            <span class="grow col" style="gap:2px"><b style="font-size:15.5px">الدخول بالبصمة</b><span class="small muted ellipsis" dir="ltr" style="text-align:right">${esc(bioEmail)}</span></span></button>
+          <div class="row small muted" style="gap:10px"><span class="grow" style="height:1px;background:var(--line)"></span>أو بكلمة المرور<span class="grow" style="height:1px;background:var(--line)"></span></div>` : ''}
         ${signup ? `<div class="field"><label for="f-name">الاسم</label><input class="input" id="f-name" name="name" autocomplete="name" required></div>` : ''}
         <div class="field"><label for="f-email">البريد الإلكتروني</label><input class="input" id="f-email" name="email" type="email" dir="ltr" autocomplete="email" inputmode="email" required></div>
         <div class="field"><label for="f-pass">كلمة المرور</label><input class="input" id="f-pass" name="password" type="password" dir="ltr" autocomplete="${signup ? 'new-password' : 'current-password'}" minlength="6" required></div>
@@ -713,9 +759,27 @@ Screens.login = async ({ query }) => {
           }
           await loadSession(); refreshUnread();
           toast('مرحباً بك', 'success');
-          location.replace('#' + next);
+          if (signup) location.replace('#' + next);
+          else await offerBiometric(email, password, () => location.replace('#' + next));
         } catch (err) { toast(errMsg(err), 'error'); btn.disabled = false; }
       });
+      const bl = $('#bioLogin');
+      if (bl) {
+        const bioGo = async () => {
+          try {
+            await Bio.verify('سجّل الدخول ببصمتك');
+            const c = await Bio.load();
+            const { error } = await sb.auth.signInWithPassword({ email: c.username, password: c.password });
+            if (error) {
+              if (String(error.message).includes('Invalid login')) { await Bio.clear(); toast('تغيّرت كلمة المرور، ادخل بكلمة المرور الجديدة', 'error'); render(); return; }
+              throw error;
+            }
+            await loadSession(); refreshUnread(); toast('مرحباً بك', 'success'); location.replace('#' + next);
+          } catch (e) { const m = bioErr(e); if (m) toast(e && e.status ? errMsg(e) : m, 'error'); }
+        };
+        bl.addEventListener('click', bioGo);
+        setTimeout(bioGo, 350); // نعرض نافذة البصمة مباشرة عند فتح الشاشة
+      }
       const fg = $('#forgot');
       if (fg) fg.addEventListener('click', async () => {
         const email = $('#f-email').value.trim();
@@ -965,7 +1029,7 @@ Screens.pharmacy = async ({ id, query }) => {
       const rb = $('#rateBtn');
       if (rb) rb.addEventListener('click', () => { if (requireLogin()) rateSheet(id, myReview); });
       const rp = $('#reportBtn');
-      if (rp) rp.addEventListener('click', () => { if (requireLogin()) reportSheet(id); });
+      if (rp) rp.addEventListener('click', () => reportSheet({ pharmacy_id: id }));
     }
   };
 };
@@ -1007,13 +1071,39 @@ function rateSheet(pid, existing) {
     });
   });
 }
-function reportSheet(pid) {
-  const types = [['closed', 'وجدتها مغلقة وهي تظهر مفتوحة'], ['wrong_price', 'السعر غير صحيح'], ['out_of_stock', 'الدواء غير متوفر رغم ظهوره'], ['other', 'شيء آخر']];
-  openSheet(`<h3>ما المشكلة؟</h3><div class="stack" style="gap:8px">${types.map(([k, v]) => `<button class="list-card" data-rt="${k}" style="padding:14px 16px">${icon('flag', 18, 1.9)}<span class="grow">${v}</span></button>`).join('')}</div>`, (o) => {
-    o.querySelectorAll('[data-rt]').forEach(b => b.addEventListener('click', async () => {
-      try { await q(sb.from('reports').insert({ pharmacy_id: pid, type: b.dataset.rt })); closeSheet(); toast('وصلنا بلاغك، شكراً لك', 'success'); }
-      catch (e) { toast(errMsg(e), 'error'); }
+const REPORT_REASONS = {
+  closed: 'وجدتها مغلقة وهي تظهر مفتوحة', wrong_price: 'السعر غير صحيح', out_of_stock: 'الدواء غير متوفر رغم ظهوره',
+  fake: 'صيدلية وهمية أو معلومات مزيفة', rx_violation: 'تصرف أدوية الوصفة بدون روشتة',
+  abuse: 'كلام مسيء أو تحرش', spam: 'رسائل مزعجة أو إعلانات', scam: 'محاولة احتيال أو طلب تحويل مشبوه',
+  bug: 'خلل في التطبيق', other: 'شيء آخر'
+};
+// target: { pharmacy_id } أو { chat_id } أو {} (مشكلة في التطبيق)
+function reportSheet(target = {}) {
+  if (!requireLogin()) return;
+  const keys = target.chat_id ? ['abuse', 'scam', 'spam', 'other']
+    : target.pharmacy_id ? ['closed', 'wrong_price', 'out_of_stock', 'fake', 'rx_violation', 'other'] : ['bug', 'other'];
+  const title = target.chat_id ? 'الإبلاغ عن هذه المحادثة' : target.pharmacy_id ? 'الإبلاغ عن الصيدلية' : 'الإبلاغ عن مشكلة';
+  let reason = null;
+  openSheet(`<h3>${title}</h3>
+    <div class="stack" style="gap:8px" role="radiogroup">${keys.map(k => `<button class="list-card" data-rt="${k}" role="radio" aria-checked="false" style="padding:13px 16px">${icon('flag', 18, 1.9)}<span class="grow">${REPORT_REASONS[k]}</span></button>`).join('')}</div>
+    <div class="field" style="margin:14px 0"><label for="rnote">تفاصيل (اختياري)</label><textarea id="rnote" class="input" maxlength="300" placeholder="اكتب ما حدث باختصار"></textarea></div>
+    ${target.chat_id ? `<p class="small muted" style="margin:-4px 0 12px;line-height:1.7">سيطّلع المشرف على هذه المحادثة لمراجعة البلاغ.</p>` : ''}
+    <button class="btn btn-primary" id="rsend" disabled>إرسال البلاغ</button>`, (o) => {
+    o.querySelectorAll('[data-rt]').forEach(b => b.addEventListener('click', () => {
+      reason = b.dataset.rt;
+      o.querySelectorAll('[data-rt]').forEach(x => { const on = x === b; x.style.borderColor = on ? 'var(--brand)' : 'var(--line)'; x.style.boxShadow = on ? '0 0 0 1.5px var(--brand)' : ''; x.setAttribute('aria-checked', on); });
+      $('#rsend').disabled = false;
     }));
+    $('#rsend').addEventListener('click', async () => {
+      const btn = $('#rsend'); btn.disabled = true;
+      try {
+        await q(sb.from('reports').insert({ ...target, reason, type: 'other', note: $('#rnote').value.trim() || null }));
+        closeSheet(); toast('وصلنا بلاغك، سنراجعه قريباً. شكراً لك', 'success');
+      } catch (e) {
+        btn.disabled = false;
+        toast(String(e.message || '').includes('too many') ? 'وصلت للحد اليومي من البلاغات' : errMsg(e), 'error');
+      }
+    });
   });
 }
 async function openChatWith(pid) {
@@ -1143,6 +1233,7 @@ Screens.chat = async ({ id }) => {
   const msgs = await q(sb.from('messages').select('*').eq('chat_id', id).order('created_at').limit(300));
   const ph = chat.pharmacies;
   const iAmPharmacy = ph.owner_id === S.user.id;
+  const isMember = iAmPharmacy || chat.user_id === S.user.id; // غير ذلك: مشرف يراجع بلاغاً
   const [bg, fg] = tint(ph.id);
   const bubble = (m) => {
     const mine = m.sender_id === S.user.id;
@@ -1157,16 +1248,18 @@ Screens.chat = async ({ id }) => {
     html: `<div class="screen no-nav" style="padding-bottom:calc(84px + var(--safe-bottom))">
       ${topbar(iAmPharmacy ? 'عميل' : esc(ph.name), { back: '/chats',
         sub: iAmPharmacy ? `محادثة مع صيدليتك` : (ph.is_open ? '<span style="color:var(--brand)">مفتوحة الآن</span>' : 'مغلقة الآن'),
-        right: iAmPharmacy ? '' : `<a class="icon-btn soft" href="tel:${esc(ph.phone)}" aria-label="اتصال">${icon('phone', 20, 2)}</a>` })}
+        right: `${isMember ? `<button class="icon-btn" id="repChat" aria-label="الإبلاغ عن المحادثة" style="color:var(--muted)">${icon('flag', 19, 1.9)}</button>` : ''}${iAmPharmacy || !isMember ? '' : `<a class="icon-btn soft" href="tel:${esc(ph.phone)}" aria-label="اتصال">${icon('phone', 20, 2)}</a>`}` })}
+      ${!isMember ? `<div class="notice info" style="margin:12px 16px 0">${icon('shield', 18, 1.9)}<span>عرض المشرف لمراجعة بلاغ · للقراءة فقط</span></div>` : ''}
       <div class="msgs" id="msgs">${msgs.length ? msgs.map(withDays).join('') :
         `<div class="empty" style="padding:30px 10px"><div class="ic" style="background:${bg};color:${fg}">${icon('chat', 28, 1.7)}</div><h3>ابدأ المحادثة</h3><p class="small">اسأل عن توفر الدواء وسعره. يمكنك إرسال صورة الروشتة.</p></div>`}</div>
-      <form class="composer" id="cmp">
+      <form class="composer" id="cmp" ${isMember ? '' : 'hidden'}>
         <label class="icon-btn" aria-label="إرفاق صورة" style="cursor:pointer;color:var(--muted)">${icon('camera', 20, 1.8)}<input type="file" id="img" accept="image/*" hidden></label>
         <input type="text" id="txt" placeholder="اكتب رسالتك…" autocomplete="off" maxlength="2000" aria-label="الرسالة">
         <button class="icon-btn" style="background:var(--brand);color:#fff" aria-label="إرسال" type="submit">${icon('send', 20, 2, 'style="transform:scaleX(-1)"')}</button>
       </form></div>`,
     mount() {
       const box = $('#msgs');
+      const rc = $('#repChat'); if (rc) rc.addEventListener('click', () => reportSheet({ chat_id: id }));
       const hydrate = () => box.querySelectorAll('img[data-img]').forEach(async (im) => {
         const pth = im.dataset.img; im.removeAttribute('data-img');
         try { im.src = await signedUrl(pth); im.style.minWidth = ''; im.style.minHeight = ''; im.style.background = 'none';
@@ -1226,6 +1319,8 @@ Screens.account = async () => {
   if (!S.user) return { html: `<div class="screen"><div class="page-title"><h1>حسابي</h1></div>${emptyState('user', 'لم تسجّل الدخول بعد', 'سجّل لتحفظ صيدلياتك المفضلة وتتواصل معها، أو لتسجّل صيدليتك.', `<div class="col" style="width:100%;max-width:260px;gap:10px"><a class="btn btn-primary" href="#/login?next=/account">تسجيل الدخول</a><a class="btn btn-soft" href="#/login?mode=signup&next=/account">إنشاء حساب</a></div>`)}${nav('/account')}</div>` };
   const favs = await q(sb.from('favorites').select('pharmacies(id, name, is_open, verified, address, rating_avg, rating_count, night_shift, closes_at)').order('created_at', { ascending: false }));
   const name = (S.profile && S.profile.name) || 'مستخدم';
+  const bioOk = await Bio.available();
+  const bioOn = bioOk && (await Bio.email()) === S.user.email;
   const row = (ic, label, val, href, color) => `<a href="${href}" class="row" style="min-height:56px;color:var(--ink);gap:12px"><span style="width:36px;height:36px;border-radius:11px;background:${color[0]};color:${color[1]};display:flex;align-items:center;justify-content:center">${icon(ic, 18, 1.9)}</span><span class="grow" style="font-size:14.5px;font-weight:500">${label}</span><span class="small muted">${val}</span><span style="color:var(--faint)">${icon('fwd', 18, 2)}</span></a>`;
   return {
     html: `<div class="screen"><div class="page-title"><h1>حسابي</h1></div>
@@ -1245,7 +1340,10 @@ Screens.account = async () => {
         <div><h2 style="font-size:16px;margin:4px 2px 10px">الصيدليات المفضلة</h2>
           ${favs.length ? `<div class="stack">${favs.filter(f => f.pharmacies).map(f => pharmacyCard(f.pharmacies)).join('')}</div>` :
           `<div class="card small muted" style="padding:16px;text-align:center;line-height:1.7">اضغط ${icon('heart', 14, 2)} في صفحة أي صيدلية لحفظها هنا</div>`}</div>
-        <div class="card" style="padding:0 16px">
+        <div class="card divider-list" style="padding:0 16px">
+          ${bioOk ? `<button id="bioToggle" class="row" style="min-height:56px;gap:12px;width:100%;text-align:right"><span style="width:36px;height:36px;border-radius:11px;background:var(--t1-bg);color:var(--t1-fg);display:flex;align-items:center;justify-content:center">${FINGER.replace('width="28" height="28"', 'width="18" height="18"')}</span><span class="grow" style="font-size:14.5px;font-weight:500">الدخول بالبصمة</span>
+            <span class="switch" style="width:48px;height:28px;background:${bioOn ? 'var(--brand)' : 'var(--line-strong)'}"><i style="width:20px;height:20px;top:4px;left:${bioOn ? '4px' : '24px'}"></i></span></button>` : ''}
+          ${row('flag', 'الإبلاغ عن مشكلة', '', '#/account', ['var(--t2-bg)', 'var(--t2-fg)']).replace('<a href="#/account"', '<a href="#/account" id="repApp"')}
           ${row('pin', 'الموقع', S.coordsReal ? esc(S.coords.place || (S.coords.manual ? 'يدوي' : 'تلقائي')) : 'غير محدد', '#/home', ['var(--t0-bg)', 'var(--t0-fg)'])}
         </div>
         <p class="small muted" style="text-align:center">الإصدار ${APP_BUILD}</p>
@@ -1253,6 +1351,22 @@ Screens.account = async () => {
       </div>${nav('/account')}</div>`,
     mount() {
       $('#out').addEventListener('click', async () => { await sb.auth.signOut(); await loadSession(); S.unread = 0; toast('تم تسجيل الخروج'); go('/home'); });
+      const ra = $('#repApp'); if (ra) ra.addEventListener('click', (e) => { e.preventDefault(); reportSheet({}); });
+      const bt = $('#bioToggle');
+      if (bt) bt.addEventListener('click', () => {
+        if (bioOn) { Bio.clear().then(() => { toast('أُلغي الدخول بالبصمة'); render(); }); return; }
+        openSheet(`<h3>تفعيل الدخول بالبصمة</h3><div class="field" style="margin-bottom:16px"><label for="bpw">أدخل كلمة المرور للتأكيد</label><input id="bpw" type="password" dir="ltr" class="input" autocomplete="current-password"></div><button class="btn btn-primary" id="bpGo">متابعة</button>`, () => {
+          $('#bpGo').addEventListener('click', async () => {
+            const pw = $('#bpw').value; if (pw.length < 6) return toast('أدخل كلمة المرور', 'error');
+            try {
+              const { error } = await sb.auth.signInWithPassword({ email: S.user.email, password: pw });
+              if (error) throw error;
+              await Bio.verify('أكّد بصمتك لتفعيل الدخول السريع'); await Bio.save(S.user.email, pw);
+              closeSheet(); toast('تم تفعيل الدخول بالبصمة', 'success'); render();
+            } catch (e) { const m = e && e.status ? errMsg(e) : bioErr(e); if (m) toast(m, 'error'); }
+          });
+        });
+      });
       $('#editName').addEventListener('click', () => openSheet(`<h3>تعديل الاسم</h3><div class="field" style="margin-bottom:16px"><label for="nm">الاسم</label><input id="nm" class="input" value="${esc(name)}" maxlength="60"></div><button class="btn btn-primary" id="nmSave">حفظ</button>`, () => {
         $('#nmSave').addEventListener('click', async () => {
           const v = $('#nm').value.trim(); if (!v) return;
@@ -1593,10 +1707,24 @@ Screens.admin = async ({ query }) => {
       <p class="small muted" style="line-height:1.7">اترك خانة السعر فارغة لإخفاء تلك المدة.</p>
       <button class="btn btn-primary" type="submit">حفظ</button></form>`;
   } else if (tab === 'reports') {
-    const rows = await q(sb.from('reports').select('*, pharmacies(name)').order('created_at', { ascending: false }).limit(100));
-    const T = { closed: 'مغلقة وتظهر مفتوحة', wrong_price: 'سعر خاطئ', out_of_stock: 'غير متوفر', other: 'أخرى' };
-    content = rows.length ? `<div class="card divider-list" style="padding:0 14px">${rows.map(r => `<div class="row" style="padding:12px 0"><span class="grow col" style="gap:2px"><b style="font-size:14px">${esc(r.pharmacies ? r.pharmacies.name : '')}</b><span class="small muted">${T[r.type]} · ${ago(r.created_at)}</span></span><button class="icon-btn" data-rdel="${r.id}" aria-label="حذف البلاغ">${icon('check', 18, 2)}</button></div>`).join('')}</div>` :
-      emptyState('flag', 'لا توجد بلاغات', '');
+    const rows = await q(sb.from('reports').select('*, pharmacies(id, name, verified)').order('created_at', { ascending: false }).limit(150));
+    rows.sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1));
+    const TG = { pharmacy: ['store', 'صيدلية'], chat: ['chat', 'محادثة'], app: ['shieldAlert', 'التطبيق'] };
+    const openN = rows.filter(r => r.status === 'open').length;
+    content = rows.length ? `<p class="small muted">${openN} بلاغ مفتوح من ${rows.length}</p>` + rows.map(r => {
+      const why = REPORT_REASONS[r.reason || r.type] || r.type, tg = TG[r.target] || TG.pharmacy;
+      return `<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:10px;${r.status === 'resolved' ? 'opacity:.6' : ''}">
+        <div class="row" style="justify-content:space-between;align-items:flex-start">
+          <div class="col" style="gap:3px"><span class="row small muted" style="gap:6px">${icon(tg[0], 15, 2)}${tg[1]}${r.pharmacies ? ' · <b style="color:var(--ink)">' + esc(r.pharmacies.name) + '</b>' : ''}</span>
+            <b style="font-size:14.5px">${esc(why)}</b>${r.note ? `<span style="font-size:13.5px;line-height:1.7;color:var(--ink-2)">«${esc(r.note)}»</span>` : ''}
+            <span class="small muted">${ago(r.created_at)}</span></div>
+          <span class="badge ${r.status === 'open' ? 'b-low' : 'b-open'}">${r.status === 'open' ? 'مفتوح' : 'تم الحل'}</span></div>
+        ${r.status === 'open' ? `<div class="row" style="flex-wrap:wrap;gap:8px">
+          ${r.chat_id ? `<a class="btn btn-soft" style="height:40px;font-size:13px;width:auto;padding:0 14px" href="#/chat/${r.chat_id}">${icon('eye', 16, 2)}عرض المحادثة</a>` : ''}
+          ${r.pharmacies ? `<a class="btn btn-soft" style="height:40px;font-size:13px;width:auto;padding:0 14px" href="#/pharmacy/${r.pharmacies.id}">الصيدلية</a>` : ''}
+          ${r.pharmacies && r.pharmacies.verified ? `<button class="btn" style="height:40px;font-size:13px;width:auto;padding:0 14px;background:var(--red-soft);color:var(--red)" data-suspend="${r.pharmacies.id}">إيقاف الصيدلية</button>` : ''}
+          <button class="btn btn-primary" style="height:40px;font-size:13px;width:auto;padding:0 14px" data-resolve="${r.id}">${icon('check', 16, 2)}تم الحل</button></div>` : ''}
+      </div>`; }).join('') : emptyState('flag', 'لا توجد بلاغات', 'ستظهر هنا بلاغات المستخدمين عن الصيدليات والمحادثات والتطبيق.');
   } else {
     content = `<form id="prodForm" class="card stack" style="padding:16px;gap:14px">
       <div class="field"><label for="p-name">اسم الصنف كما يُباع</label><input class="input" id="p-name" required placeholder="مثال: بنادول إكسترا 24 قرص"></div>
@@ -1647,8 +1775,17 @@ Screens.admin = async ({ query }) => {
         try { await q(sb.from('app_settings').update(row).eq('id', 1)); toast('تم الحفظ', 'success'); }
         catch (err) { toast(errMsg(err), 'error'); }
       });
-      document.querySelectorAll('[data-rdel]').forEach(b => b.addEventListener('click', async () => {
-        try { await q(sb.from('reports').delete().eq('id', b.dataset.rdel)); render(); } catch (e) { toast(errMsg(e), 'error'); }
+      document.querySelectorAll('[data-resolve]').forEach(b => b.addEventListener('click', async () => {
+        try { await q(sb.from('reports').update({ status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', b.dataset.resolve)); toast('أُغلق البلاغ', 'success'); render(); }
+        catch (e) { toast(errMsg(e), 'error'); }
+      }));
+      document.querySelectorAll('[data-suspend]').forEach(b => b.addEventListener('click', () => {
+        openSheet(`<h3>إيقاف الصيدلية؟</h3><p class="small muted" style="line-height:1.8;margin-bottom:16px">ستختفي من البحث والخريطة حتى توثّقها من جديد من تبويب "التوثيق".</p><button class="btn" id="susGo" style="background:var(--red);color:#fff">إيقاف</button>`, () => {
+          $('#susGo').addEventListener('click', async () => {
+            try { await q(sb.from('pharmacies').update({ verified: false }).eq('id', b.dataset.suspend)); closeSheet(); toast('أُوقفت الصيدلية'); render(); }
+            catch (e) { toast(errMsg(e), 'error'); }
+          });
+        });
       }));
       const f = $('#prodForm');
       if (f) f.addEventListener('submit', async (e) => {
