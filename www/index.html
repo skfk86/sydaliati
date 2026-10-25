@@ -344,7 +344,7 @@ const P = {
   wifiOff:'<path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M2 8.8a15 15 0 0 1 4.2-2.6M10.7 5.1A15 15 0 0 1 22 8.8M5 12.9a10 10 0 0 1 5.2-2.7M16.8 13.2a10 10 0 0 0-1.8-1.6M12 20h.01"/>'
 };
 function icon(name, size = 22, sw = 1.9, extra = '') {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${P[name] || ''}</svg>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" ${/fill=/.test(extra) ? '' : 'fill="none"'} stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${P[name] || ''}</svg>`;
 }
 const VERIFIED = `<svg width="17" height="17" viewBox="0 0 24 24" fill="#0B6E5B" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="صيدلية موثقة"><path d="M12 2.5 14.6 4.4 17.8 4.3 18.8 7.4 21.4 9.3 20.4 12.4 21.4 15.5 18.8 17.4 17.8 20.5 14.6 20.4 12 22.3 9.4 20.4 6.2 20.5 5.2 17.4 2.6 15.5 3.6 12.4 2.6 9.3 5.2 7.4 6.2 4.3 9.4 4.4z"/><path d="m8.5 12.5 2.3 2.3 4.7-4.8"/></svg>`;
 const PREMIUM = `<span class="badge b-premium" style="padding:2px 7px;font-size:11px">${'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 7 5 4 5-7 5 7 5-4-2 12H4z"/></svg>'}مميزة</span>`;
@@ -815,7 +815,8 @@ Screens.home = async () => {
             <span class="row" style="gap:6px;font-size:15.5px;font-weight:600">${icon('pin', 18, 2)}<span id="locName" class="ellipsis" style="max-width:230px">${S.coordsReal ? esc(S.coords.place || 'موقعك الحالي') : 'الموقع غير محدد'}</span>${icon('locate', 15, 2)}</span>
             ${S.coordsReal && S.coords.manual ? `<span style="font-size:11.5px;color:var(--hero-ink)">مدينة مختارة يدوياً · اضغط للتغيير</span>` : S.coordsReal && S.coords.acc ? `<span style="font-size:11.5px;color:var(--hero-ink)">الدقة ±${S.coords.acc} م · اضغط للتحديث</span>` : `<span style="font-size:11.5px;color:var(--hero-ink)">اضغط لتحديد موقعك</span>`}
           </button>
-          <a class="icon-btn glass" href="#/chats" aria-label="المحادثات">${icon('chat', 22, 1.8)}</a>
+          <div class="row" style="gap:8px"><a class="icon-btn glass" href="#/favorites" aria-label="المفضلة">${icon('heart', 21, 1.8)}</a>
+          <a class="icon-btn glass" href="#/chats" aria-label="المحادثات">${icon('chat', 22, 1.8)}</a></div>
         </div>
         <h1>${hello}<br>${S.profile && S.profile.name ? 'دواؤك قريب منك' : 'قبل ما تطلع من البيت'}</h1>
       </div>
@@ -1372,7 +1373,7 @@ function compressImage(file, maxSide, quality) {
 /* ===== حسابي ===== */
 Screens.account = async () => {
   if (!S.user) return { html: `<div class="screen"><div class="page-title"><h1>حسابي</h1></div>${emptyState('user', 'لم تسجّل الدخول بعد', 'سجّل لتحفظ صيدلياتك المفضلة وتتواصل معها، أو لتسجّل صيدليتك.', `<div class="col" style="width:100%;max-width:260px;gap:10px"><a class="btn btn-primary" href="#/login?next=/account">تسجيل الدخول</a><a class="btn btn-soft" href="#/login?mode=signup&next=/account">إنشاء حساب</a></div>`)}${nav('/account')}</div>` };
-  const favs = await q(sb.from('favorites').select('pharmacies(id, name, is_open, verified, address, rating_avg, rating_count, night_shift, closes_at)').order('created_at', { ascending: false }));
+  const favCount = (await sb.from('favorites').select('pharmacy_id', { count: 'exact', head: true }).eq('user_id', S.user.id)).count || 0;
   const name = (S.profile && S.profile.name) || 'مستخدم';
   const bioOk = await Bio.available();
   const bioOn = bioOk && (await Bio.email()) === S.user.email;
@@ -1392,9 +1393,10 @@ Screens.account = async () => {
             <span class="grow col" style="gap:3px"><span class="bold">هل تملك صيدلية؟</span><span class="small" style="color:var(--inv-muted)">سجّلها مجاناً ووصل لعملاء أكثر</span></span>
             <span style="color:var(--brand-mint)">${icon('fwd', 20, 2)}</span></a>`}
         ${S.profile && S.profile.is_admin ? `<a href="#/admin" class="list-card">${icon('shield', 22, 1.9)}<span class="grow bold">لوحة المشرف</span><span style="color:var(--faint)">${icon('fwd', 18, 2)}</span></a>` : ''}
-        <div><h2 style="font-size:16px;margin:4px 2px 10px">الصيدليات المفضلة</h2>
-          ${favs.length ? `<div class="stack">${favs.filter(f => f.pharmacies).map(f => pharmacyCard(f.pharmacies)).join('')}</div>` :
-          `<div class="card small muted" style="padding:16px;text-align:center;line-height:1.7">اضغط ${icon('heart', 14, 2)} في صفحة أي صيدلية لحفظها هنا</div>`}</div>
+        <a href="#/favorites" class="list-card">
+          <span class="avatar" style="width:46px;height:46px;border-radius:14px;background:var(--t4-bg);color:var(--t4-fg)">${icon('heart', 22, 2, 'fill="currentColor"')}</span>
+          <span class="grow col" style="gap:2px"><b style="font-size:15px">الصيدليات المفضلة</b><span class="small muted">${favCount ? `${favCount} ${favCount === 1 ? 'صيدلية' : favCount === 2 ? 'صيدليتان' : favCount <= 10 ? 'صيدليات' : 'صيدلية'}` : 'لم تحفظ أي صيدلية بعد'}</span></span>
+          <span style="color:var(--faint)">${icon('fwd', 18, 2)}</span></a>
         <div class="card divider-list" style="padding:0 16px">
           ${bioOk ? `<button id="bioToggle" class="row" style="min-height:56px;gap:12px;width:100%;text-align:right"><span style="width:36px;height:36px;border-radius:11px;background:var(--t1-bg);color:var(--t1-fg);display:flex;align-items:center;justify-content:center">${FINGER.replace('width="28" height="28"', 'width="18" height="18"')}</span><span class="grow" style="font-size:14.5px;font-weight:500">الدخول بالبصمة</span>
             <span class="switch" style="width:48px;height:28px;background:${bioOn ? 'var(--brand)' : 'var(--line-strong)'}"><i style="width:20px;height:20px;top:4px;left:${bioOn ? '4px' : '24px'}"></i></span></button>` : ''}
@@ -1431,6 +1433,36 @@ Screens.account = async () => {
       }));
       const locRow = document.querySelector('a[href="#/home"].row');
       if (locRow) locRow.addEventListener('click', (e) => { e.preventDefault(); locationSheet(''); });
+    }
+  };
+};
+
+/* ===== المفضلة ===== */
+Screens.favorites = async () => {
+  if (!S.user) return { html: `<div class="screen no-nav">${topbar('المفضلة', { back: '/home' })}${emptyState('heart', 'سجّل الدخول لحفظ صيدلياتك المفضلة', 'احفظ الصيدليات التي تتعامل معها لتصل إليها بسرعة.', `<a class="btn btn-primary" href="#/login?next=/favorites" style="max-width:220px">تسجيل الدخول</a>`)}</div>` };
+  const c = await getCoords();
+  const rows = await q(sb.from('favorites').select('created_at, pharmacies(*)').eq('user_id', S.user.id).order('created_at', { ascending: false }));
+  const list = rows.filter(r => r.pharmacies).map(r => {
+    const p = r.pharmacies, loc = parseLoc(p.location);
+    return { ...p, distance_m: loc && S.coordsReal ? haversine(c, loc) : null, is_premium: isPremium(p) };
+  }).sort((a, b) => (b.is_open - a.is_open) || ((a.distance_m ?? 1e9) - (b.distance_m ?? 1e9)));
+  const openN = list.filter(p => p.is_open).length;
+  return {
+    html: `<div class="screen no-nav">${topbar('الصيدليات المفضلة', { back: '/home', sub: list.length ? `${list.length} محفوظة · ${openN} مفتوحة الآن` : '' })}
+      <div class="pad stack" style="padding-top:16px" id="favList">${list.length ? list.map(p => `<div class="row fav-item" data-id="${p.id}" style="gap:8px;align-items:stretch">
+          <div class="grow" style="min-width:0">${pharmacyCard(p)}</div>
+          <button class="icon-btn" data-unfav="${p.id}" aria-label="إزالة من المفضلة" style="height:auto;width:48px;border-radius:18px;background:var(--card);border:1px solid var(--line);color:var(--red)">${icon('heart', 20, 2, 'fill="currentColor"')}</button></div>`).join('') :
+        emptyState('heart', 'لا توجد صيدليات مفضلة بعد', `اضغط ${icon('heart', 14, 2)} في صفحة أي صيدلية لتحفظها هنا وتصل إليها بسرعة.`, `<a class="btn btn-primary" href="#/home" style="max-width:240px">تصفّح الصيدليات</a>`)}</div></div>`,
+    mount() {
+      document.querySelectorAll('[data-unfav]').forEach(b => b.addEventListener('click', async () => {
+        const id = b.dataset.unfav;
+        try {
+          await q(sb.from('favorites').delete().eq('pharmacy_id', id).eq('user_id', S.user.id));
+          const item = document.querySelector(`.fav-item[data-id="${id}"]`);
+          if (item) { item.style.transition = 'opacity .2s'; item.style.opacity = '0'; setTimeout(() => { item.remove(); if (!document.querySelector('.fav-item')) render(); }, 200); }
+          toast('أُزيلت من المفضلة');
+        } catch (e) { toast(errMsg(e), 'error'); }
+      }));
     }
   };
 };
