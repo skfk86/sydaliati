@@ -32,6 +32,18 @@ jobs:
           node scripts/copy-vendor.js
           ls -la www/vendor
 
+      # الإشعارات: ملف Firebase من أسرار GitHub (إن وُجد)
+      - name: Enable push notifications
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            sed -i "s/'__PUSH__'/'on'/" www/index.html
+            echo "push: on"
+          else
+            echo "push: off (secret GOOGLE_SERVICES_JSON not set)"
+          fi
+
       - name: Stamp build version
         run: sed -i "s/__BUILD__/${{ github.run_number }} · $(date -u +%Y-%m-%d)/" www/index.html
 
@@ -41,6 +53,15 @@ jobs:
           bash scripts/android-permissions.sh
 
       # أيقونة التطبيق وشاشة البداية من مجلد assets
+      - name: Add Firebase config
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+            python3 -c "import json;json.load(open('android/app/google-services.json'))" && echo "google-services.json ok"
+          fi
+
       - name: Generate icon and splash
         run: |
           npx capacitor-assets generate --android \

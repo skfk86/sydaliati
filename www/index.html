@@ -266,6 +266,7 @@ select.input{appearance:none}
 const SUPABASE_URL = 'https://gsplawplbiruyjkndblg.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_kZMvSQWDZi3j3GqoL0GIGA_yBnyYPkX';
 const APP_BUILD = '__BUILD__';
+const PUSH_ENABLED = '__PUSH__' === 'on'; // يفعّله GitHub Actions عند وجود ملف Firebase
 const DEFAULT_COORDS = { lat: 19.6158, lng: 37.2164 }; // بورتسودان
 const CITIES = [
   ['portsudan','بورتسودان'],['khartoum','الخرطوم'],['omdurman','أم درمان'],['bahri','بحري'],
@@ -486,9 +487,51 @@ async function placeName(c) {
   } catch { return ''; }
 }
 
+/* ---------- الإشعارات (Firebase Cloud Messaging) ---------- */
+const Push = {
+  token: null, bound: false,
+  get p() { return isNative && PUSH_ENABLED ? Plug('PushNotifications') : null; },
+  async save() {
+    if (!this.token || !S.user) return;
+    const c = S.coordsReal && S.coords ? S.coords : null;
+    try { await sb.rpc('register_push_token', { p_token: this.token, p_lat: c ? c.lat : null, p_lng: c ? c.lng : null }); } catch (e) { console.warn('push save', e); }
+  },
+  route(d = {}) {
+    if (d.type === 'chat' && d.chat_id) go('/chat/' + d.chat_id);
+    else if (d.type === 'stock' && d.product_id) go('/product/' + d.product_id);
+    else if (d.type === 'owner') go('/owner');
+  },
+  async init() {
+    const P = this.p; if (!P || !S.user) return;
+    try {
+      let perm = await P.checkPermissions();
+      if (perm.receive !== 'granted') perm = await P.requestPermissions();
+      if (perm.receive !== 'granted') return;
+      try { await P.createChannel({ id: 'default', name: 'إشعارات حبّة', description: 'الرسائل وتوفر الأدوية', importance: 5, visibility: 1, sound: 'default', vibration: true, lights: true, lightColor: '#0B6E5B' }); } catch {}
+      if (!this.bound) {
+        this.bound = true;
+        P.addListener('registration', async (t) => { this.token = t.value; await kv.set('push_token', t.value); this.save(); });
+        P.addListener('registrationError', (e) => console.warn('push reg', e));
+        P.addListener('pushNotificationReceived', (n) => { // التطبيق مفتوح: نعرضها داخل التطبيق
+          const d = n.data || {};
+          if (d.type === 'chat' && parseHash().name === 'chat' && parseHash().id === d.chat_id) return;
+          toast(`${n.title || ''} — ${n.body || ''}`); refreshUnread();
+        });
+        P.addListener('pushNotificationActionPerformed', (a) => this.route((a.notification && a.notification.data) || {}));
+      }
+      await P.register();
+    } catch (e) { console.warn('push init', e); }
+  },
+  async logout() {
+    const t = this.token || await kv.get('push_token');
+    if (t) { try { await sb.rpc('unregister_push_token', { p_token: t }); } catch {} }
+  }
+};
+
 async function saveCoords(c, lookupName = true) {
   S.coords = c; S.coordsReal = true;
   await kv.set('coords', JSON.stringify(c));
+  if (Push.token) Push.save();
   if (lookupName) placeName(c).then(n => { if (n && S.coords === c) { c.place = n; kv.set('coords', JSON.stringify(c)); const el = $('#locName'); if (el) el.textContent = n; } });
 }
 
@@ -757,7 +800,7 @@ Screens.login = async ({ query }) => {
             const { error } = await sb.auth.signInWithPassword({ email, password });
             if (error) throw error;
           }
-          await loadSession(); refreshUnread();
+          await loadSession(); refreshUnread(); Push.init();
           toast('مرحباً بك', 'success');
           if (signup) location.replace('#' + next);
           else await offerBiometric(email, password, () => location.replace('#' + next));
@@ -774,7 +817,7 @@ Screens.login = async ({ query }) => {
               if (String(error.message).includes('Invalid login')) { await Bio.clear(); toast('تغيّرت كلمة المرور، ادخل بكلمة المرور الجديدة', 'error'); render(); return; }
               throw error;
             }
-            await loadSession(); refreshUnread(); toast('مرحباً بك', 'success'); location.replace('#' + next);
+            await loadSession(); refreshUnread(); Push.init(); toast('مرحباً بك', 'success'); location.replace('#' + next);
           } catch (e) { const m = bioErr(e); if (m) toast(e && e.status ? errMsg(e) : m, 'error'); }
         };
         bl.addEventListener('click', bioGo);
@@ -1435,7 +1478,7 @@ Screens.account = async () => {
         <button class="btn btn-danger" id="out">${icon('logout', 18, 2)}تسجيل الخروج</button>
       </div>${nav('/account')}</div>`,
     mount() {
-      $('#out').addEventListener('click', async () => { await sb.auth.signOut(); await loadSession(); S.unread = 0; toast('تم تسجيل الخروج'); go('/home'); });
+      $('#out').addEventListener('click', async () => { await Push.logout(); await sb.auth.signOut(); await loadSession(); S.unread = 0; toast('تم تسجيل الخروج'); go('/home'); });
       const ra = $('#repApp'); if (ra) ra.addEventListener('click', (e) => { e.preventDefault(); reportSheet({}); });
       const bt = $('#bioToggle');
       if (bt) bt.addEventListener('click', () => {
@@ -2097,6 +2140,7 @@ document.addEventListener('click', (e) => {
   });
   await loadSession();
   sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT' || ev === 'TOKEN_REFRESHED') loadSession(); });
+  Push.init();
   refreshUnread();
   const first = await kv.get('seen_intro');
   if (!S.user && !first && !location.hash) { await kv.set('seen_intro', '1'); location.replace('#/login'); }
