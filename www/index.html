@@ -831,6 +831,10 @@ Screens.home = async () => {
         <a class="cat" href="#/map?night=1"><span style="color:#7C3AED">${icon('moon', 26, 1.8)}</span>مناوبة ليلية</a>
       </div>
       ${!S.coordsReal ? `<div class="notice warn" style="margin:18px 20px 0">${icon('pin', 18, 2)}<span>لم نتمكن من تحديد موقعك. <button id="loc2" style="color:inherit;font-weight:700;text-decoration:underline">حدّد موقعك أو اختر مدينتك</button>.</span></div>` : ''}
+      ${S.user ? `<div class="pad" style="padding-top:18px"><a href="#/mymeds" class="list-card" style="gap:14px">
+        <span class="avatar" style="width:48px;height:48px;border-radius:15px;background:var(--t1-bg);color:var(--t1-fg)">${icon('pill', 24, 1.9)}</span>
+        <span class="grow col" style="gap:2px"><b style="font-size:15px">أدويتي</b><span class="small muted">احفظ أدويتك الدائمة واعرف أين تتوفر كلها</span></span>
+        <span style="color:var(--faint)">${icon('fwd', 18, 2)}</span></a></div>` : ''}
       <div class="section-head"><h2>${far ? 'أقرب الصيدليات المسجلة' : openCount ? `${openCount} مفتوحة بالقرب منك` : 'الصيدليات القريبة'}</h2><a href="#/map" class="small bold">عرض الخريطة</a></div>
       ${far && S.coordsReal ? `<p class="small muted" style="padding:0 20px 10px;margin-top:-4px">لا توجد صيدليات مسجلة ضمن 15 كم منك حتى الآن.</p>` : ''}
       <div class="pad stack">${list.length ? list.slice(0, 20).map(pharmacyCard).join('') :
@@ -943,7 +947,11 @@ Screens.product = async ({ id }) => {
     q(sb.rpc('where_available', { pid: id, lat: c.lat, lng: c.lng, radius_m: 30000 })),
     q(sb.rpc('product_alternatives', { pid: id })).catch(() => [])
   ]);
+  let isMine = S.user ? (await q(sb.from('my_meds').select('product_id').eq('product_id', id).eq('user_id', S.user.id))).length > 0 : false;
   const ic = catIcon(product);
+  const mineBtn = () => isMine
+    ? `${icon('check', 18, 2.2)}في أدويتي`
+    : `${icon('plus', 18, 2.2)}أضف إلى أدويتي`;
   const sameGen = alts.filter(a => a.relation === 'نفس المادة الفعالة'), sameCls = alts.filter(a => a.relation !== 'نفس المادة الفعالة');
   const altRow = (a) => `<a href="#/product/${a.id}" class="row" style="padding:12px 0;color:var(--ink)">
       <span class="grow col" style="gap:2px"><b style="font-size:14px">${esc(a.name)}</b>${a.brands ? `<span class="small muted">${brandsShort(a.brands)}</span>` : ''}</span>
@@ -952,6 +960,7 @@ Screens.product = async ({ id }) => {
   const altBlock = (title, list) => list.length ? `<div class="col" style="gap:6px"><h3 style="font-size:14.5px">${title}</h3><div class="card divider-list" style="padding:0 14px">${list.map(altRow).join('')}</div></div>` : '';
   return {
     html: `<div class="screen no-nav">${topbar('أين يتوفر؟', { back: '/search' })}
+      ${product.category === 'medicine' ? `<div class="pad" style="padding-top:14px"><button class="btn ${isMine ? 'btn-soft' : 'btn-primary'}" id="mineBtn" style="height:46px;font-size:14.5px">${mineBtn()}</button></div>` : ''}
       <div class="pad stack" style="padding-top:16px;gap:12px"><div class="list-card" style="align-items:flex-start">
         <span class="avatar" style="background:var(--blue-soft);color:var(--blue)">${icon(ic, 28, 1.8)}</span>
         <span class="grow col" style="gap:3px"><span style="font-size:16px;font-weight:700;line-height:1.5">${esc(product.name)}</span>
@@ -979,7 +988,22 @@ Screens.product = async ({ id }) => {
         ${altBlock(rows.length ? 'تركيزات وأشكال أخرى' : 'بدائل بنفس المادة الفعالة', sameGen)}
         ${altBlock('من نفس الفئة العلاجية', sameCls.slice(0, 6))}
         ${alts.length ? `<p class="small muted" style="line-height:1.7;padding-bottom:12px">${icon('shieldAlert', 14, 2)} لا تستبدل دواءً بآخر إلا باستشارة الصيدلي أو الطبيب.</p>` : ''}
-      </div></div>`
+      </div></div>`,
+    mount() {
+      const b = $('#mineBtn');
+      if (b) b.addEventListener('click', async () => {
+        if (!requireLogin(`/product/${id}`)) return;
+        b.disabled = true;
+        try {
+          if (isMine) await q(sb.from('my_meds').delete().eq('product_id', id).eq('user_id', S.user.id));
+          else await q(sb.from('my_meds').insert({ product_id: id }));
+          isMine = !isMine;
+          b.className = 'btn ' + (isMine ? 'btn-soft' : 'btn-primary'); b.innerHTML = mineBtn();
+          toast(isMine ? 'أُضيف إلى أدويتي' : 'أُزيل من أدويتي', isMine ? 'success' : '');
+        } catch (e) { toast(errMsg(e), 'error'); }
+        b.disabled = false;
+      });
+    }
   };
 };
 
@@ -1393,6 +1417,10 @@ Screens.account = async () => {
             <span class="grow col" style="gap:3px"><span class="bold">هل تملك صيدلية؟</span><span class="small" style="color:var(--inv-muted)">سجّلها مجاناً ووصل لعملاء أكثر</span></span>
             <span style="color:var(--brand-mint)">${icon('fwd', 20, 2)}</span></a>`}
         ${S.profile && S.profile.is_admin ? `<a href="#/admin" class="list-card">${icon('shield', 22, 1.9)}<span class="grow bold">لوحة المشرف</span><span style="color:var(--faint)">${icon('fwd', 18, 2)}</span></a>` : ''}
+        <a href="#/mymeds" class="list-card">
+          <span class="avatar" style="width:46px;height:46px;border-radius:14px;background:var(--t1-bg);color:var(--t1-fg)">${icon('pill', 22, 1.9)}</span>
+          <span class="grow col" style="gap:2px"><b style="font-size:15px">أدويتي</b><span class="small muted">أدويتك الدائمة وأين تتوفر</span></span>
+          <span style="color:var(--faint)">${icon('fwd', 18, 2)}</span></a>
         <a href="#/favorites" class="list-card">
           <span class="avatar" style="width:46px;height:46px;border-radius:14px;background:var(--t4-bg);color:var(--t4-fg)">${icon('heart', 22, 2, 'fill="currentColor"')}</span>
           <span class="grow col" style="gap:2px"><b style="font-size:15px">الصيدليات المفضلة</b><span class="small muted">${favCount ? `${favCount} ${favCount === 1 ? 'صيدلية' : favCount === 2 ? 'صيدليتان' : favCount <= 10 ? 'صيدليات' : 'صيدلية'}` : 'لم تحفظ أي صيدلية بعد'}</span></span>
@@ -1433,6 +1461,76 @@ Screens.account = async () => {
       }));
       const locRow = document.querySelector('a[href="#/home"].row');
       if (locRow) locRow.addEventListener('click', (e) => { e.preventDefault(); locationSheet(''); });
+    }
+  };
+};
+
+/* ===== أدويتي ===== */
+Screens.mymeds = async () => {
+  if (!S.user) return { html: `<div class="screen no-nav">${topbar('أدويتي', { back: '/home' })}${emptyState('pill', 'سجّل الدخول لحفظ أدويتك', 'احفظ أدويتك الدائمة (سكري، ضغط، قلب…) واعرف بنظرة واحدة أين تتوفر وبأي سعر.', `<a class="btn btn-primary" href="#/login?next=/mymeds" style="max-width:220px">تسجيل الدخول</a>`)}</div>` };
+  const c = await getCoords();
+  const [meds, best] = await Promise.all([
+    q(sb.rpc('my_meds_status', { lat: c.lat, lng: c.lng, radius_m: 30000 })),
+    q(sb.rpc('my_meds_best_pharmacies', { lat: c.lat, lng: c.lng, radius_m: 30000 }))
+  ]);
+  const availN = meds.filter(m => m.avail_count > 0).length;
+  const top = best[0];
+  return {
+    html: `<div class="screen no-nav">${topbar('أدويتي', { back: '/home', sub: meds.length ? `${meds.length === 1 ? 'دواء واحد' : meds.length === 2 ? 'دواءان' : meds.length + (meds.length <= 10 ? ' أدوية' : ' دواء')} · ${availN} متوفر قريباً منك` : '' })}
+      <div class="pad stack" style="padding-top:16px;gap:14px">
+        <div class="notice info">${icon('lock', 18, 1.9)}<span>قائمة أدويتك خاصة بك وحدك، لا يراها أي شخص آخر.</span></div>
+        ${top && meds.length > 1 ? `<a href="#/pharmacy/${top.pharmacy_id}" class="card" style="padding:16px;display:flex;flex-direction:column;gap:8px;color:var(--ink);border-color:var(--brand)">
+          <span class="small bold" style="color:var(--brand)">${icon('check', 15, 2.4)} أنسب صيدلية لك</span>
+          <span class="row" style="justify-content:space-between"><b style="font-size:16px">${esc(top.name)}</b><span class="badge ${top.is_open ? 'b-open' : 'b-closed'}">${top.is_open ? 'مفتوحة' : 'مغلقة'}</span></span>
+          <span class="small muted">فيها <b style="color:var(--ink)">${top.covered} من ${top.total}</b> من أدويتك · ${fmtDist(top.distance_m)}${top.total_price ? ` · المجموع ${fmtPrice(top.total_price)} ج.س` : ''}</span>
+          <div style="height:6px;border-radius:6px;background:var(--field);overflow:hidden"><div style="height:100%;width:${Math.round(top.covered / top.total * 100)}%;background:var(--brand)"></div></div></a>` : ''}
+        <button class="btn btn-primary" id="addMed" style="height:48px">${icon('plus', 18, 2.2)}أضف دواءً</button>
+        ${meds.length ? `<div class="stack" style="gap:10px">${meds.map(m => `<div class="card med-item" data-id="${m.product_id}" style="padding:14px;display:flex;flex-direction:column;gap:10px">
+          <div class="row" style="align-items:flex-start">
+            <a href="#/product/${m.product_id}" class="grow col" style="gap:2px;color:var(--ink)"><b style="font-size:15px">${esc(m.name)}</b>${m.brands ? `<span class="small muted">${brandsShort(m.brands)}</span>` : ''}</a>
+            ${m.rx ? '<span class="badge b-rx">بوصفة</span>' : ''}
+            <button class="icon-btn" data-rm="${m.product_id}" aria-label="إزالة" style="width:36px;height:36px;background:none;color:var(--faint)">${icon('x', 16, 2)}</button></div>
+          ${m.avail_count ? `<a href="#/pharmacy/${m.nearest_id}" class="row" style="justify-content:space-between;border-top:1px dashed var(--line);padding-top:10px;color:var(--ink)">
+              <span class="col" style="gap:2px"><span class="small muted">الأقرب</span><b style="font-size:13.5px">${esc(m.nearest_name)} <span class="small muted" style="font-weight:400">· ${fmtDist(m.nearest_m)}${m.nearest_open ? '' : ' · مغلقة'}</span></b></span>
+              <span class="col" style="gap:2px;align-items:flex-end"><span class="badge b-open">متوفر في ${m.avail_count}</span>${m.min_price != null ? `<span class="small muted">من ${fmtPrice(m.min_price)} ج.س</span>` : ''}</span></a>`
+            : `<a href="#/product/${m.product_id}" class="row small" style="justify-content:space-between;border-top:1px dashed var(--line);padding-top:10px;color:var(--amber)"><span>غير متوفر قريباً · اعرض البدائل</span>${icon('fwd', 16, 2)}</a>`}
+        </div>`).join('')}</div>` :
+        emptyState('pill', 'لم تضف أي دواء بعد', 'أضف أدويتك التي تستخدمها باستمرار، وسنخبرك أين تتوفر كلها وأقرب صيدلية فيها أكثرها.')}
+      </div></div>`,
+    mount() {
+      document.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', async () => {
+        try { await q(sb.from('my_meds').delete().eq('product_id', b.dataset.rm).eq('user_id', S.user.id)); toast('أُزيل من أدويتي'); render(); }
+        catch (e) { toast(errMsg(e), 'error'); }
+      }));
+      $('#addMed').addEventListener('click', () => {
+        const mine = new Set(meds.map(m => m.product_id));
+        let dirty = false;
+        openSheet(`<h3>أضف دواءً إلى أدويتي</h3>
+          <label class="searchbox" style="margin-bottom:12px">${icon('search', 18, 2)}<input id="mq" placeholder="اسم الدواء كما في العلبة أو الروشتة" autocomplete="off"></label>
+          <div id="mres" class="stack" style="gap:10px;min-height:220px"><p class="small muted" style="line-height:1.8">مثال: <b>جلوكوفاج</b> أو <b dir="ltr">Amlodipine</b> أو <b>كونكور</b>. الأخطاء الإملائية مقبولة.</p></div>`, (o) => {
+          o.addEventListener('click', (e) => { if (e.target === o && dirty) render(); });
+          const input = $('#mq'), box = $('#mres'); let t, seq = 0;
+          const chip = (it) => mine.has(it.id)
+            ? `<span class="chip" style="height:34px;background:var(--brand-soft);border-color:transparent;color:var(--brand)">${icon('check', 14, 2.4)}${esc(it.label)}</span>`
+            : `<button class="chip" data-madd="${it.id}" style="height:34px">${icon('plus', 14, 2.4)}${esc(it.label)}</button>`;
+          input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(async () => {
+            const term = input.value.trim(), my = ++seq; if (term.length < 2) return;
+            try {
+              const rows = await q(sb.rpc('smart_search', { q: term, cat: 'medicine', lim: 30 }));
+              if (my !== seq) return;
+              const groups = groupProducts(rows);
+              box.innerHTML = groups.length ? groups.map(g => groupCard(g, chip)).join('') : `<p class="small muted" style="text-align:center;padding:20px 0">لم نجد هذا الدواء</p>`;
+              box.querySelectorAll('[data-madd]').forEach(bt => bt.addEventListener('click', async () => {
+                bt.disabled = true;
+                try { await q(sb.from('my_meds').insert({ product_id: bt.dataset.madd })); mine.add(bt.dataset.madd); dirty = true;
+                  bt.outerHTML = `<span class="chip" style="height:34px;background:var(--brand-soft);border-color:transparent;color:var(--brand)">${icon('check', 14, 2.4)}${bt.textContent}</span>`; toast('أُضيف', 'success'); }
+                catch (e) { bt.disabled = false; toast(errMsg(e), 'error'); }
+              }));
+            } catch (e) { box.innerHTML = `<p class="small muted">${errMsg(e)}</p>`; }
+          }, 280); });
+          input.focus();
+        });
+      });
     }
   };
 };
