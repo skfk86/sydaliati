@@ -1485,9 +1485,26 @@ Screens.account = async () => {
           ${row('pin', 'الموقع', S.coordsReal ? esc(S.coords.place || (S.coords.manual ? 'يدوي' : 'تلقائي')) : 'غير محدد', '#/home', ['var(--t0-bg)', 'var(--t0-fg)'])}
         </div>
         <p class="small muted" style="text-align:center">الإصدار ${APP_BUILD}</p>
+        <a href="https://skfk86.github.io/sydaliati/privacy.html" target="_blank" rel="noopener" class="small" style="text-align:center;display:block">سياسة الخصوصية</a>
         <button class="btn btn-danger" id="out">${icon('logout', 18, 2)}تسجيل الخروج</button>
+        <button class="btn btn-ghost small" id="delAcc" style="color:var(--muted);margin-bottom:12px">حذف الحساب</button>
       </div>${nav('/account')}</div>`,
     mount() {
+      $('#delAcc').addEventListener('click', () => openSheet(`<h3>حذف الحساب نهائياً؟</h3>
+        <p class="small" style="line-height:1.8;margin-bottom:14px">سيُحذف حسابك وكل بياناتك فوراً: المحادثات، و"أدويتي"، والمفضلة، والتقييمات${S.myPharmacy ? '، <b>وصيدليتك ومخزونها</b>' : ''}. لا يمكن التراجع عن هذا.</p>
+        <div class="field" style="margin-bottom:14px"><label for="delc">اكتب كلمة <b>حذف</b> للتأكيد</label><input id="delc" class="input"></div>
+        <button class="btn" id="delGo" style="background:var(--red);color:#fff">حذف حسابي</button>`, () => {
+        $('#delGo').addEventListener('click', async (e) => {
+          if ($('#delc').value.trim() !== 'حذف') return toast('اكتب كلمة "حذف" للتأكيد', 'error');
+          e.currentTarget.disabled = true;
+          try {
+            await Push.logout();
+            await q(sb.rpc('delete_my_account'));
+            await Bio.clear(); await sb.auth.signOut(); await loadSession(); S.unread = 0;
+            closeSheet(); toast('حُذف حسابك'); go('/home');
+          } catch (err) { e.currentTarget.disabled = false; toast(errMsg(err), 'error'); }
+        });
+      }));
       $('#out').addEventListener('click', async () => { await Push.logout(); await sb.auth.signOut(); await loadSession(); S.unread = 0; toast('تم تسجيل الخروج'); go('/home'); });
       const ra = $('#repApp'); if (ra) ra.addEventListener('click', (e) => { e.preventDefault(); reportSheet({}); });
       const bt = $('#bioToggle');
